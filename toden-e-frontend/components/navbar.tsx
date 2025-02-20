@@ -40,8 +40,8 @@ const Navbar = () => {
                 alt="Logo"
                 priority
               />
-              <span className="text-md whitespace-nowrap font-semibold dark:text-white sm:text-xl">
-                Toden-E Tool
+              <span className="text-md whitespace-nowrap font-semibold dark:text-white sm:text-2xl">
+                Toden-E
               </span>
             </div>
           </Link>
