@@ -1674,13 +1674,11 @@ def toden_e_predict(pags_txt_path = "Leukemia_drug_resistantVSsensitive.txt", al
 def compute_partition_score():
     pass
 
-
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Toden-E Predict Functionality')
     parser.add_argument('--func', type=str, required=True, help='Functionality to execute: visualize or partition_score')
-    parser.add_argument('--file_path', type=str, default="gene_names.txt", help='Path to the text file containing gene names.')
+    parser.add_argument('--file_path', type=str, default="Leukemia_drug_resistantVSsensitive.txt", help='Path to the text file containing gene names.')
     parser.add_argument('--clusering_results_path', type=str, default="toden_predict_results.csv", help='Path to the toden-e results.')
     parser.add_argument('--alpha', type=float, default=0.5, help='Alpha parameter for clustering.')
     parser.add_argument('--num_clusters', type=int, default=2, help='Number of clusters for partitioning.')
@@ -1695,7 +1693,7 @@ if __name__ == "__main__":
         # Call the partition score function
         partition_score_results = compute_partition_score()  # Replace with your actual partition function
     elif args.func == "super_pag":
-        toden_e_predict(txt_file_path=args.file_path, alpha=args.alpha, num_clusters=args.num_clusters, is_visualized=args.is_visualized)
+        toden_e_predict(pags_txt_path=args.file_path, alpha=args.alpha, num_clusters=args.num_clusters, is_visualized=args.is_visualized)
 
     elif args.func == "summerization":
         summarize_cluster_results(clusering_results_path= args.clusering_results_path)
