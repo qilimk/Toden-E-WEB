@@ -24,16 +24,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -52,19 +51,28 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { HelpCircle } from "lucide-react";
 
 const PredictFormSchema = z
   .object({
     file: z.string().optional(),
-    fileUpload: z.any().optional(), // typically a FileList
+    fileUpload: z.any().optional(),
     alphaSelect: z.string().optional(),
-    alphaCustom: z.string().optional(), // converts input string to number
+    alphaCustom: z.string().optional(),
     visualize: z
       .string()
       .nonempty({ message: "Please select Yes or No for visualize." })
       .refine(
         (val) => val === "yes" || val === "no",
         { message: "Please select Yes or No for visualize." }
+      ),
+    clusters: z.string().nonempty({ message: "Please select the number of clusters." }),
+    summarize: z
+      .string()
+      .nonempty({ message: "Please select Yes or No for summarize." })
+      .refine(
+        (val) => val === "yes" || val === "no",
+        { message: "Please select Yes or No for summarize." }
       ),
   })
   // Ensure at least one of file or fileUpload is provided
@@ -78,7 +86,7 @@ const PredictFormSchema = z
       (data.alphaSelect && data.alphaSelect.trim() !== "") ||
       (data.alphaCustom && data.alphaCustom.trim() !== ""),
     { message: "Please select an alpha value or enter a custom one.", path: ["alphaCustom"] }
-);
+  );
 
 const VisualizeFormSchema = z
   .object({
@@ -120,6 +128,8 @@ export default function Home() {
       alphaSelect: "",
       alphaCustom: "",
       visualize: "",
+      clusters: "",
+      summarize: "",
     },
   });
 
@@ -139,8 +149,38 @@ export default function Home() {
     },
   });
   
-  function PredictSubmit(data: z.infer<typeof PredictFormSchema>) {
+  async function PredictSubmit(data: z.infer<typeof PredictFormSchema>) {
     console.log(data)
+
+    const formData = new FormData();
+
+    // Append the file selection (if any)
+    formData.append('file', data.file || '');
+    
+    // If a file was uploaded, add it (we assume fileUpload is an array of files)
+    if (data.fileUpload && data.fileUpload.length > 0) {
+      formData.append('fileUpload', data.fileUpload[0]);
+    }
+    
+    // Append other form fields
+    formData.append('alphaSelect', data.alphaSelect || '');
+    formData.append('alphaCustom', data.alphaCustom || '');
+    formData.append('visualize', data.visualize || '');
+    formData.append('clusters', data.clusters || '');
+    formData.append('summarize', data.summarize || '');
+
+    try {
+      const response = await fetch('http://localhost:5000/predict', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.json();
+      console.log('Predict result:', result);
+      // Handle result (e.g., update state, show notifications, etc.)
+    } catch (error) {
+      console.error('Error submitting predict form:', error);
+    }
+
     PredictForm.reset();
     setPredictFileKey(prev => prev + 1);
   }
@@ -170,9 +210,29 @@ export default function Home() {
           </TabsList>
           <TabsContent value="predict">
             <Card className="w-[1000px]">
-              <CardHeader>
-                <CardTitle>Prediction Function</CardTitle>
-                <CardDescription>This is the prediction tool.</CardDescription>
+              <CardHeader className="flex flex-row justify-between">
+                <div className="flex flex-col">
+                  <CardTitle>Prediction Function</CardTitle>
+                  <CardDescription>This is the prediction tool.</CardDescription>
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline"><HelpCircle/></Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Help</DialogTitle>
+                      <DialogDescription>
+                        This functionality will be built out.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button>Continue</Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <Form {...PredictForm}>
                 <form onSubmit={PredictForm.handleSubmit(PredictSubmit)}>
@@ -194,7 +254,7 @@ export default function Home() {
                                 <SelectContent>
                                   <SelectGroup>
                                     <SelectLabel>File</SelectLabel>
-                                    <SelectItem value="file1">File1</SelectItem>
+                                    <SelectItem value="file1">Working</SelectItem>
                                     <SelectItem value="file2">File2</SelectItem>
                                     <SelectItem value="file3">File3</SelectItem>
                                     <SelectItem value="file4">File4</SelectItem>
@@ -227,10 +287,9 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Row 2: Alpha selection/custom entry and visualize option */}
+                    {/* Row 2: Alpha, Visualize, and Clusters (each spanning 1 column) */}
                     <div className="grid grid-cols-8 gap-4 items-center">
-                      <FormLabel className="col-span-1 text-right">Alpha</FormLabel>
-                      {/* Predefined alpha select */}
+                      <FormLabel className="text-right">Alpha</FormLabel>
                       <div className="col-span-2">
                         <FormField
                           control={PredictForm.control}
@@ -239,14 +298,13 @@ export default function Home() {
                             <FormControl>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select alpha" />
+                                  <SelectValue placeholder="Select Alpha" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectGroup>
                                     <SelectLabel>Alpha</SelectLabel>
-                                    <SelectItem value="0.1">0.1</SelectItem>
-                                    <SelectItem value="0.2">0.2</SelectItem>
-                                    <SelectItem value="0.3">0.3</SelectItem>
+                                    <SelectItem value="0.25">0.25</SelectItem>
+                                    <SelectItem value="0.5">0.5</SelectItem>
                                   </SelectGroup>
                                 </SelectContent>
                               </Select>
@@ -254,11 +312,9 @@ export default function Home() {
                           )}
                         />
                       </div>
-                      {/* "or" text */}
-                      <div className="col-span-1 text-center">
+                      <div className="text-center col-span-1">
                         <span>or</span>
                       </div>
-                      {/* Custom alpha input */}
                       <div className="col-span-2">
                         <FormField
                           control={PredictForm.control}
@@ -267,7 +323,7 @@ export default function Home() {
                             <FormControl>
                               <Input
                                 type="number"
-                                placeholder="Custom alpha"
+                                placeholder="Custom Alpha"
                                 onChange={field.onChange}
                                 value={field.value}
                               />
@@ -275,11 +331,9 @@ export default function Home() {
                           )}
                         />
                       </div>
-                      {/* "visualize" text */}
-                      <div className="col-span-1 text-center">
+                      <div className="text-center col-span-1">
                         <span>Visualize?</span>
                       </div>
-                      {/* Yes/No select for visualize */}
                       <div className="col-span-1">
                         <FormField
                           control={PredictForm.control}
@@ -294,6 +348,33 @@ export default function Home() {
                                   <SelectGroup>
                                     <SelectItem value="yes">Yes</SelectItem>
                                     <SelectItem value="no">No</SelectItem>
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                          )}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-8 gap-4 items-center">
+                      <FormLabel className="text-right">Clusters</FormLabel>
+                      <div className="col-span-2">
+                        <FormField
+                          control={PredictForm.control}
+                          name="clusters"
+                          render={({ field }) => (
+                            <FormControl>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select Clusters" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectGroup>
+                                    <SelectLabel>Clusters</SelectLabel>
+                                    <SelectItem value="2">2</SelectItem>
+                                    <SelectItem value="3">3</SelectItem>
+                                    <SelectItem value="4">4</SelectItem>
+                                    <SelectItem value="5">5</SelectItem>
                                   </SelectGroup>
                                 </SelectContent>
                               </Select>
@@ -323,9 +404,29 @@ export default function Home() {
           </TabsContent>
           <TabsContent value="visualize">
             <Card className="w-[1000px]">
-              <CardHeader>
-                <CardTitle>Visualize Function</CardTitle>
-                <CardDescription>This is the visualization tool.</CardDescription>
+            <CardHeader className="flex flex-row justify-between">
+                <div className="flex flex-col">
+                  <CardTitle>Visualize Function</CardTitle>
+                  <CardDescription>This will visualize results.</CardDescription>
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline"><HelpCircle/></Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Help</DialogTitle>
+                      <DialogDescription>
+                        This functionality will be built out.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button>Continue</Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <Form {...VisualizeForm}>
                 <form onSubmit={VisualizeForm.handleSubmit(VisualizeSubmit)}>
@@ -402,9 +503,29 @@ export default function Home() {
           </TabsContent>
           <TabsContent value="summarize">
             <Card className="w-[1000px]">
-              <CardHeader>
-                <CardTitle>Summarize Function</CardTitle>
-                <CardDescription>This is the summarization tool.</CardDescription>
+            <CardHeader className="flex flex-row justify-between">
+                <div className="flex flex-col">
+                  <CardTitle>Summarize Function</CardTitle>
+                  <CardDescription>This will summarize results.</CardDescription>
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline"><HelpCircle/></Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Help</DialogTitle>
+                      <DialogDescription>
+                        This functionality will be built out.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button>Continue</Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <Form {...SummarizeForm}>
                 <form onSubmit={SummarizeForm.handleSubmit(SummarizeSubmit)}>
