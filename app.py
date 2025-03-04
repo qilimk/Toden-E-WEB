@@ -15,13 +15,29 @@ def predict():
     alpha_custom = request.form.get('alphaCustom')
     visualize = request.form.get('visualize')
     clusters = request.form.get('clusters')
+    summarize = request.form.get('summarize')
     
-    file_data = file_selection if file_selection else file_upload
+    if file_selection:
+        file_data = file_selection + ".txt"
+    elif file_upload:
+        file_data = file_upload
+    else:
+        return jsonify({'error': 'No file provided'}), 400
+    
     alpha = alpha_select if alpha_select else alpha_custom
-    visualizeBool = True if visualize == 'Yes' else False
+    visualizeBool = True if visualize == 'yes' else False
+    summarizeBool = True if summarize == 'yes' else False
 
     try:
-        result = toden_e.toden_e_predict(file_data, alpha_select, clusters, visualizeBool)
+        print("Starting Prediction")
+        result = toden_e.toden_e_predict(
+            pags_txt_path=file_data,
+            alpha=float(alpha),
+            num_clusters=int(clusters),
+            is_visualized=visualizeBool,
+            is_summary=summarizeBool
+        )
+        print("Finished Prediction")
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -31,10 +47,18 @@ def predict():
 def visualize():
     file_selection = request.form.get('file')
     file_upload = request.files.get('fileUpload')
-    file_data = file_upload if file_upload else file_selection
+    if file_selection:
+        # Use the file selection as a file path and append ".csv"
+        file_data = file_selection + ".csv"
+    elif file_upload:
+        file_data = file_upload  # FileStorage object
+    else:
+        return jsonify({'error': 'No file provided for visualization.'}), 400
 
     try:
-        result = toden_e.visualize_function(file_data)
+        print("Visualize Begin")
+        result = toden_e.visualize_pred_results(pred_dict_path=file_data)
+        print("Visualize Complete")
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -44,10 +68,18 @@ def visualize():
 def summarize():
     file_selection = request.form.get('file')
     file_upload = request.files.get('fileUpload')
-    file_data = file_upload if file_upload else file_selection
+    if file_selection:
+        # Use the file selection as a file path and append ".csv"
+        file_data = file_selection + ".csv"
+    elif file_upload:
+        file_data = file_upload  # FileStorage object
+    else:
+        return jsonify({'error': 'No file provided for summarization.'}), 400
 
     try:
-        result = toden_e.summarize_function(file_data)
+        print("Summarize Begin")
+        result = toden_e.summarize_cluster_results(clustering_results_path=file_data)
+        print("Summarize Complete")
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

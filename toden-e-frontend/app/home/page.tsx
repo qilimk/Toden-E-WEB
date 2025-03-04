@@ -4,6 +4,7 @@
 import { useTheme } from "next-themes";
 import { useState } from "react";
 import Navbar from '@/components/navbar';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import {
   Card,
   CardContent,
@@ -91,7 +92,7 @@ const PredictFormSchema = z
 const VisualizeFormSchema = z
   .object({
     file: z.string().optional(),
-    fileUpload: z.any().optional(), // FileList from file input
+    fileUpload: z.any().optional(),
   })
   // Ensure at least one file input (select or upload) is provided.
   .refine(
@@ -169,6 +170,8 @@ export default function Home() {
     formData.append('clusters', data.clusters || '');
     formData.append('summarize', data.summarize || '');
 
+    PredictForm.reset();
+
     try {
       const response = await fetch('http://localhost:5000/predict', {
         method: 'POST',
@@ -185,15 +188,61 @@ export default function Home() {
     setPredictFileKey(prev => prev + 1);
   }
 
-  function VisualizeSubmit(data: z.infer<typeof VisualizeFormSchema>) {
-    console.log(data)
+  async function VisualizeSubmit(data: z.infer<typeof VisualizeFormSchema>) {
+    console.log(data);
+    const formData = new FormData();
+  
+    // Append file selection (if any)
+    formData.append('file', data.file || '');
+    
+    // Append file upload (if provided)
+    if (data.fileUpload && data.fileUpload.length > 0) {
+      formData.append('fileUpload', data.fileUpload[0]);
+    }
+
     VisualizeForm.reset();
+    
+    try {
+      const response = await fetch('http://localhost:5000/visualize', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.json();
+      console.log('Visualize result:', result);
+      // Handle result as needed (e.g., update state, show notifications, etc.)
+    } catch (error) {
+      console.error('Error submitting visualize form:', error);
+    }
+  
     setVisualizeFileKey(prev => prev + 1);
   }
 
-  function SummarizeSubmit(data: z.infer<typeof SummarizeFormSchema>) {
-    console.log(data)
+  async function SummarizeSubmit(data: z.infer<typeof SummarizeFormSchema>) {
+    console.log(data);
+    const formData = new FormData();
+  
+    // Append file selection (if any)
+    formData.append('file', data.file || '');
+    
+    // Append file upload (if provided)
+    if (data.fileUpload && data.fileUpload.length > 0) {
+      formData.append('fileUpload', data.fileUpload[0]);
+    }
+
     SummarizeForm.reset();
+    
+    try {
+      const response = await fetch('http://localhost:5000/summarize', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.json();
+      console.log('Summarize result:', result);
+      // Handle result as needed (e.g., update state, show notifications, etc.)
+    } catch (error) {
+      console.error('Error submitting summarize form:', error);
+    }
+  
     setSummarizeFileKey(prev => prev + 1);
   }
 
@@ -216,14 +265,59 @@ export default function Home() {
                   <CardDescription>This is the prediction tool.</CardDescription>
                 </div>
                 <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline"><HelpCircle/></Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DialogTrigger asChild>
+                          <Button variant="outline">
+                            <HelpCircle />
+                          </Button>
+                        </DialogTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>How It Works</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <DialogContent className="sm:max-w-[800px]">
                     <DialogHeader>
-                      <DialogTitle>Help</DialogTitle>
-                      <DialogDescription>
-                        This functionality will be built out.
+                      <DialogTitle>How It Works</DialogTitle>
+                      <DialogDescription className="flex flex-col space-y-2">
+                        <p>
+                          The Predict Function allows the user to select or upload a file, 
+                          select or enter an alpha value, choose whether or not they want visualization, 
+                          choose number of clusters, and choose whether or not they want summarization.
+                          Upon submission, there will be a loading period where the user will need to wait
+                          for Toden-E to complete its calculations. Then, Toden-E will forward the user to the page corresponding
+                          to the user's desired Toden-E functionality.
+                        </p>
+                        <p className="text-lg font-semibold leading-none tracking-tight dark:text-white">
+                          Example File Format
+                        </p>
+                        <p>
+                          Here is the format of the file needed for the tool to work properly {'(Use .txt files)'}:
+                        </p>
+                        <p>
+                        GO: {'{id}'}
+                        </p>
+                        <p>
+                        GO: {'{id}'}
+                        </p>
+                        <p>
+                        ...
+                        </p>
+                        <p>
+                        GO: {'{id}'}
+                        </p>
+                        <p>
+                          Example of an id: 0006413
+                        </p>
+                        <p>
+                          Visit {'(link goes here)'} to get ids
+                        </p>
+                        <p className="mt-2 text-xs text-gray-500">
+                          A file selection takes precedent over a file upload and an alpha value selection takes precedent over a custom alpha value.
+                        </p>
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -254,10 +348,10 @@ export default function Home() {
                                 <SelectContent>
                                   <SelectGroup>
                                     <SelectLabel>File</SelectLabel>
-                                    <SelectItem value="file1">Working</SelectItem>
-                                    <SelectItem value="file2">File2</SelectItem>
+                                    <SelectItem value="default">Working</SelectItem>
+                                    {/* <SelectItem value="file2">File2</SelectItem>
                                     <SelectItem value="file3">File3</SelectItem>
-                                    <SelectItem value="file4">File4</SelectItem>
+                                    <SelectItem value="file4">File4</SelectItem> */}
                                   </SelectGroup>
                                 </SelectContent>
                               </Select>
@@ -280,6 +374,7 @@ export default function Home() {
                                 key={`predict-file-${predictFileKey}`}
                                 type="file"
                                 onChange={(e) => field.onChange(e.target.files)}
+                                accept=".txt"
                               />
                             </FormControl>
                           )}
@@ -326,6 +421,9 @@ export default function Home() {
                                 placeholder="Custom Alpha"
                                 onChange={field.onChange}
                                 value={field.value}
+                                min="0"
+                                max="1"
+                                step="0.05"
                               />
                             </FormControl>
                           )}
@@ -382,6 +480,28 @@ export default function Home() {
                           )}
                         />
                       </div>
+                      <FormLabel className="text-right">Summarize</FormLabel>
+                      <div className="col-span-1">
+                        <FormField
+                          control={PredictForm.control}
+                          name="summarize"
+                          render={({ field }) => (
+                            <FormControl>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Yes/No" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectGroup>
+                                    <SelectItem value="yes">Yes</SelectItem>
+                                    <SelectItem value="no">No</SelectItem>
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                          )}
+                        />
+                      </div>
                     </div>
                   </div>
                   <CardFooter className="flex space-x-4">
@@ -410,14 +530,45 @@ export default function Home() {
                   <CardDescription>This will visualize results.</CardDescription>
                 </div>
                 <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline"><HelpCircle/></Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DialogTrigger asChild>
+                          <Button variant="outline">
+                            <HelpCircle />
+                          </Button>
+                        </DialogTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>How It Works</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    </TooltipProvider>
+                  <DialogContent className="sm:max-w-[800px]">
                     <DialogHeader>
-                      <DialogTitle>Help</DialogTitle>
-                      <DialogDescription>
-                        This functionality will be built out.
+                      <DialogTitle>How It Works</DialogTitle>
+                      <DialogDescription className="flex flex-col space-y-2">
+                        <p>
+                          The Summarize Function allows the user to select or upload a file for summarization.
+                          Upon submission, there will be a loading period where the user will need to wait
+                          for Toden-E to complete its summarization. Then, Toden-E will forward the user to the page corresponding
+                          to the user's desired Toden-E functionality.
+                        </p>
+                        <p className="text-lg font-semibold leading-none tracking-tight dark:text-white">
+                          Example File Format
+                        </p>
+                        <p>
+                          Here is the format of the file to visualize n clusters {'(Use .csv files curated by Toden-E Predict)'}:
+                        </p>
+                        <p>
+                        ID,0,..., n - 1
+                        </p>
+                        <p>
+                        {'{Clustering Algorithm}'}, {'{Cluster_1_IDs}'}, ..., {'{Cluster_(n - 1)_IDs}'}
+                        </p>
+                        <p className="mt-2 text-xs text-gray-500">
+                          A file selection takes precedent over a file upload.
+                        </p>
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -450,10 +601,10 @@ export default function Home() {
                                 <SelectContent>
                                   <SelectGroup>
                                     <SelectLabel>File</SelectLabel>
-                                    <SelectItem value="file1">File1</SelectItem>
-                                    <SelectItem value="file2">File2</SelectItem>
+                                    <SelectItem value="default">Working</SelectItem>
+                                    {/* <SelectItem value="file2">File2</SelectItem>
                                     <SelectItem value="file3">File3</SelectItem>
-                                    <SelectItem value="file4">File4</SelectItem>
+                                    <SelectItem value="file4">File4</SelectItem> */}
                                   </SelectGroup>
                                 </SelectContent>
                               </Select>
@@ -476,6 +627,7 @@ export default function Home() {
                                 key={`visualize-file-${visualizeFileKey}`}
                                 type="file"
                                 onChange={(e) => field.onChange(e.target.files)}
+                                accept=".csv"
                               />
                             </FormControl>
                           )}
@@ -509,14 +661,45 @@ export default function Home() {
                   <CardDescription>This will summarize results.</CardDescription>
                 </div>
                 <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline"><HelpCircle/></Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DialogTrigger asChild>
+                        <Button variant="outline">
+                          <HelpCircle />
+                        </Button>
+                      </DialogTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>How It Works</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  </TooltipProvider>
+                  <DialogContent className="sm:max-w-[800px]">
                     <DialogHeader>
-                      <DialogTitle>Help</DialogTitle>
-                      <DialogDescription>
-                        This functionality will be built out.
+                      <DialogTitle>How It Works</DialogTitle>
+                      <DialogDescription className="flex flex-col space-y-2">
+                        <p>
+                          The Summarize Function allows the user to select or upload a file for summarization.
+                          Upon submission, there will be a loading period where the user will need to wait
+                          for Toden-E to complete its summarization. Then, Toden-E will forward the user to the page corresponding
+                          to the user's desired Toden-E functionality.
+                        </p>
+                        <p className="text-lg font-semibold leading-none tracking-tight dark:text-white">
+                          Example File Format
+                        </p>
+                        <p>
+                          Here is the format of the file to summarize n clusters {'(Use .csv files curated by Toden-E Predict)'}:
+                        </p>
+                        <p>
+                        ID,0,..., n - 1
+                        </p>
+                        <p>
+                        {'{Clustering Algorithm}'}, {'{Cluster_1_IDs}'}, ..., {'{Cluster_(n - 1)_IDs}'}
+                        </p>
+                        <p className="mt-2 text-xs text-gray-500">
+                          A file selection takes precedent over a file upload.
+                        </p>
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -552,11 +735,10 @@ export default function Home() {
                                 <SelectContent>
                                   <SelectGroup>
                                     <SelectLabel>File</SelectLabel>
-                                    {/* Blank option so that resetting shows no selection */}
-                                    <SelectItem value="file1">File1</SelectItem>
-                                    <SelectItem value="file2">File2</SelectItem>
+                                    <SelectItem value="default">Working</SelectItem>
+                                    {/* <SelectItem value="file2">File2</SelectItem>
                                     <SelectItem value="file3">File3</SelectItem>
-                                    <SelectItem value="file4">File4</SelectItem>
+                                    <SelectItem value="file4">File4</SelectItem> */}
                                   </SelectGroup>
                                 </SelectContent>
                               </Select>
@@ -579,6 +761,7 @@ export default function Home() {
                                 key={`summarize-file-${summarizeFileKey}`}
                                 type="file"
                                 onChange={(e) => field.onChange(e.target.files)}
+                                accept=".csv"
                               />
                             </FormControl>
                           )}

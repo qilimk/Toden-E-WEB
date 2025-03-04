@@ -1026,12 +1026,19 @@ def summarize_chunk(text, chunk_size, summarizer):
 def summarize_cluster_results(clusering_results_path= "real_data_clustering_results.csv"):
     
     max_length = 1024  # Adjust as needed
-    df = pd.read_csv(clusering_results_path)
+
+    if isinstance(clusering_results_path, str):
+        df = pd.read_csv(clusering_results_path)
+    elif hasattr(clusering_results_path, 'read'):
+        clusering_results_path.seek(0)
+        df = pd.read_csv(clusering_results_path)
+    else:
+        raise ValueError("Invalid type for clusering_results_path")
+    
     df_desc = pd.read_csv(META_DATA_PATH)
 
     # summarize_prompt = lambda input_text: f"Summarize the following sentences into a single sentence: {input_text}"
     summarize_prompt = "Summarize the following text in a concise manner, aiming for a brief summary of about 50 words or less:"
-
     
     df.head()
     for idx, row in df.iterrows():
@@ -1061,16 +1068,28 @@ def summarize_cluster_results(clusering_results_path= "real_data_clustering_resu
         print(results_dict)
 
 
-def visulize_pred_results(G_path= "2024_biological_process_graph_w_verification.graphml", pred_dict_path= "real_data_clustering_results.csv"):
-    G = nx.read_graphml(G_path)
+def visualize_pred_results(G_path= "2024_biological_process_graph_w_verification.graphml", pred_dict_path= "real_data_clustering_results.csv"):
+    # G = nx.read_graphml(G_path)
     vis_graph = GraphAnalysis(nx.read_graphml(WHOLE_GRAPH_PATH), 'GO:0008150')
-    df = pd.read_csv(pred_dict_path)
-    df.head()
+
+    if isinstance(pred_dict_path, str):
+        df = pd.read_csv(pred_dict_path)
+    elif hasattr(pred_dict_path, 'read'):
+        pred_dict_path.seek(0)
+        df = pd.read_csv(pred_dict_path)
+    else:
+        raise ValueError("Invalid type for pred_dict_path")
+
+    print(df.head())
     
     for idx, row in df.iterrows():
 
         algo = row['ID']
-        pred_list = [row[label].split(',') for label in ['0', '1', '-1'] if not pd.isna(row[label])]
+        pred_list = [
+            row[label].split(',')
+            for label in ['0', '1', '-1']
+            if label in row and not pd.isna(row[label])
+        ]
         all_nodes = [item for sublist in pred_list for item in sublist]
         color_map = cm.get_cmap('viridis', len(pred_list) + 1)
         all_connected_nodes = vis_graph.add_intermediate_nodes_to_keep_connected(all_nodes)
@@ -1269,7 +1288,7 @@ def merge_feature_to_embeddings_clustering(roots_list, alpha = 0.5, num_clusters
     # df.to_csv(save_file_path, index=False)
 
     if is_visualized:
-        visulize_pred_results(pred_dict_path= save_file_path)
+        visualize_pred_results(pred_dict_path= save_file_path)
 
     return results
 
@@ -1332,7 +1351,7 @@ def merge_feature_to_graph_clustering(roots_list, alpha = 0.5, num_clusters=2, i
     print("finish!!!")
 
     if is_visualized:
-        visulize_pred_results(pred_dict_path= save_file_path)
+        visualize_pred_results(pred_dict_path= save_file_path)
 
     # for algorithm in ['spectral_clustering', 'agglomerative_clustering']:  #'girvan_newman',  'louvain', 'girvan_newman', 
     #     ari, nmi = run_eval(algorithm, G, true_labels, is_plot=False, num_clusters=num_clusters)
@@ -1486,9 +1505,9 @@ def test():
         # eval_merge_feature_clustering(roots, alpha=alpha)
         
         merge_feature_to_embeddings_clustering(roots, alpha, num_clusters=num)
-        # visulize_pred_results(pred_dict_path=save_file_path)
+        # visualize_pred_results(pred_dict_path=save_file_path)
         # save_llm_clustering_results(bp_graph_path, roots)
-        # visulize_pred_results(pred_dict_path=save_file_path)
+        # visualize_pred_results(pred_dict_path=save_file_path)
 
     # Convert results to DataFrame and save to CSV
     # results_df = pd.DataFrame(results)
@@ -1623,10 +1642,23 @@ def toden_e_predict(pags_txt_path = "Leukemia_drug_resistantVSsensitive.txt", al
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Read gene names from a text file into a list
-    with open(pags_txt_path, 'r') as file:
-        valid_nodes = [line.strip() for line in file if line.strip()]  # Read lines and strip whitespace
+    if isinstance(pags_txt_path, str):
+        with open(pags_txt_path, 'r') as file:
+            valid_nodes = [line.strip() for line in file if line.strip()]
+    elif hasattr(pags_txt_path, 'read'):
+        content = pags_txt_path.read()
+        if isinstance(content, bytes):
+            content = content.decode('utf-8')
+        valid_nodes = [line.strip() for line in content.splitlines() if line.strip()]
+    else:
+        raise ValueError("Unsupported type for pags_txt_path")
+    
+    print("Alpha:", alpha)
+    print("Number of clusters:", num_clusters)
+    print("Visualize:", is_visualized)
+    print("Summary:", is_summary)
 
-    save_file_path = "toden_predict_results.csv"
+    save_file_path = "default.csv"
 
     clustering_algorithms = {'Agglomerative': AgglomerativeClustering(n_clusters=num_clusters),}
 
@@ -1666,10 +1698,18 @@ def toden_e_predict(pags_txt_path = "Leukemia_drug_resistantVSsensitive.txt", al
     df.to_csv(save_file_path, index=False)
 
     if is_visualized:
-        visulize_pred_results(pred_dict_path= save_file_path)
+        visualize_pred_results(pred_dict_path= save_file_path)
 
     if is_summary:
         summarize_cluster_results(clusering_results_path= save_file_path)
+
+    # Modify this to return the csv as a downloadable file to the user so they can use the visualize and summarize functionality
+    result = {
+        "nodes_count": len(valid_nodes),
+        "processed": True
+    }
+
+    return result
 
 def compute_partition_score():
     pass
@@ -1688,7 +1728,7 @@ if __name__ == "__main__":
 
     if args.func == "visualize":
         # Call the visualization function
-        visulize_pred_results(pred_dict_path= args.clusering_results_path) 
+        visualize_pred_results(pred_dict_path= args.clusering_results_path) 
     elif args.func == "partition_score":
         # Call the partition score function
         partition_score_results = compute_partition_score()  # Replace with your actual partition function
