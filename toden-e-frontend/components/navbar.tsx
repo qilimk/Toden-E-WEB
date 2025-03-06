@@ -27,9 +27,9 @@ const Navbar = () => {
   }, []);
 
   return (
-    <div className="sticky top-0 z-50 !bg-background shadow-md dark:outline dark:outline-1 dark:outline-offset-0 dark:outline-border">
-      <div className="flex w-full h-14 items-center px-4">
-        <div className="flex items-center justify-start flex-grow">
+    <div className="z-50 !bg-background shadow-md dark:outline dark:outline-1 dark:outline-offset-0 dark:outline-border">
+      <div className="flex h-14 items-center justify-between px-4">
+        <div>
           <Link href="/home" passHref>
             <div className="flex items-center">
               <Image
@@ -47,7 +47,7 @@ const Navbar = () => {
           </Link>
         </div>
         
-        <div className="absolute left-1/2 transform -translate-x-1/2 flex space-x-12">
+        <div className="space-x-12">
           <Link href="/home" passHref>
             <Button 
               variant="ghost" 
@@ -70,7 +70,7 @@ const Navbar = () => {
           </Link>
         </div>
 
-        <div className="flex items-center justify-end space-x-3 flex-grow">
+        <div className="space-x-3">
           <ThemeToggle />
           <Link href="https://github.com/qilimk/Toden-E-WEB" passHref>
             <Button variant="ghost" size="icon">

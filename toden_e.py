@@ -1068,7 +1068,7 @@ def summarize_cluster_results(clusering_results_path= "real_data_clustering_resu
         print(results_dict)
 
 
-def visualize_pred_results(G_path= "2024_biological_process_graph_w_verification.graphml", pred_dict_path= "real_data_clustering_results.csv"):
+def visualize_pred_results(G_path= "2024_biological_process_graph_w_verification.graphml", pred_dict_path= "default.csv"):
     # G = nx.read_graphml(G_path)
     vis_graph = GraphAnalysis(nx.read_graphml(WHOLE_GRAPH_PATH), 'GO:0008150')
 
@@ -1129,7 +1129,7 @@ def visualize_pred_results(G_path= "2024_biological_process_graph_w_verification
                             legend_patches.append(patch)
 
         # Plotting
-        plt.figure(figsize=(16, 10))
+        # plt.figure(figsize=(16, 10))
         # plt.title(f"The visualization for LLM embedding clustering by Algorithm {algo}")
         
         # Draw the reversed graph with arrows pointing in the opposite direction, using the same node positions
@@ -1719,7 +1719,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Toden-E Predict Functionality')
     parser.add_argument('--func', type=str, required=True, help='Functionality to execute: visualize or partition_score')
     parser.add_argument('--file_path', type=str, default="Leukemia_drug_resistantVSsensitive.txt", help='Path to the text file containing gene names.')
-    parser.add_argument('--clusering_results_path', type=str, default="toden_predict_results.csv", help='Path to the toden-e results.')
+    parser.add_argument('--clusering_results_path', type=str, default="default.csv", help='Path to the toden-e results.')
     parser.add_argument('--alpha', type=float, default=0.5, help='Alpha parameter for clustering.')
     parser.add_argument('--num_clusters', type=int, default=2, help='Number of clusters for partitioning.')
     parser.add_argument('--is_visualized', action='store_true', help='Flag to indicate if visualization is required.')

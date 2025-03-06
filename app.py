@@ -2,6 +2,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import toden_e
+import csv
+import io
 
 app = Flask(__name__)
 CORS(app)
@@ -49,16 +51,30 @@ def visualize():
     file_upload = request.files.get('fileUpload')
     if file_selection:
         # Use the file selection as a file path and append ".csv"
-        file_data = file_selection + ".csv"
+        file_path = file_selection + ".csv"
+        try:
+            with open(file_path, "r") as f:
+                file_content = f.read()
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
     elif file_upload:
-        file_data = file_upload  # FileStorage object
+        file_content = file_upload.read().decode("utf-8")
     else:
         return jsonify({'error': 'No file provided for visualization.'}), 400
 
     try:
-        print("Visualize Begin")
-        result = toden_e.visualize_pred_results(pred_dict_path=file_data)
-        print("Visualize Complete")
+        csv_reader = csv.reader(io.StringIO(file_content))
+        rows = list(csv_reader)
+        if len(rows) < 2:
+            return jsonify({"error": "CSV file does not have the required rows"}), 400
+
+        header = rows[0]
+        data = rows[1]
+        result = {
+            "header": header,
+            "algorithm": data[0],
+            "clusters": data[1:],
+        }
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
