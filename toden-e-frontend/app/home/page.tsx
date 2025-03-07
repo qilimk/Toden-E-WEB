@@ -17,7 +17,7 @@ export default function HomePage() {
         {view === "tabs" ? (
           <div className="flex flex-row h-full w-full items-center">
             <div className="flex-1">
-              <Home clustersData={clustersData} setClustersData={setClustersData} />
+              <Home clustersData={clustersData} setClustersData={setClustersData} setView={setView} />
             </div>
               <Button 
                 variant="ghost"

@@ -130,9 +130,10 @@ const SummarizeFormSchema = z
 interface TabsContentProps {
   clustersData: any;
   setClustersData: (data: any) => void;
+  setView: (view: string) => void; // New prop for view control
 }
 
-export default function Home({ clustersData, setClustersData }: TabsContentProps) {
+export default function Home({ clustersData, setClustersData, setView }: TabsContentProps) {
   const [predictFileKey, setPredictFileKey] = useState(0);
   const [visualizeFileKey, setVisualizeFileKey] = useState(0);
   const [summarizeFileKey, setSummarizeFileKey] = useState(0);
@@ -166,9 +167,9 @@ export default function Home({ clustersData, setClustersData }: TabsContentProps
       fileUpload: "",
       alphaSelect: "",
       alphaCustom: "",
-      visualize: "",
+      visualize: undefined,
       clusters: "",
-      summarize: "",
+      summarize: undefined,
     },
   });
 
@@ -262,7 +263,8 @@ export default function Home({ clustersData, setClustersData }: TabsContentProps
       const result = await response.json();
       console.log('Visualize result:', result);
       setClustersData(result.result);
-      console.log(clustersData)
+      setView("graph");
+      // console.log(clustersData)
       // Handle result as needed (e.g., update state, show notifications, etc.)
     } catch (error) {
       console.error('Error submitting visualize form:', error);
