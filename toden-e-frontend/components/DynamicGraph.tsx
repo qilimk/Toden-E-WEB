@@ -1,111 +1,56 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import * as dagre from "dagre"; // for layout
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// Graph Data Interfaces
-export interface GraphNode {
-  id: string;
-  x?: number;
-  y?: number;
+interface DynamicGraphProps {
+  clustersData: { clusters: string[] } | null;
+  selectedNode: string;
 }
 
-export interface GraphEdge {
-  source: string;
-  target: string;
-}
-
-export interface Graph {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-}
-
-export interface ClustersData {
-  algorithm: string;
-  clusters: string[];
-  header: string[];
-}
-
-/**
- * Build a simple graph from clusters:
- * - Each GO term becomes a node.
- * - For each cluster, connect nodes sequentially.
- */
-function buildGraphFromClusters(clustersData: ClustersData): Graph {
-  const nodeMap: { [key: string]: GraphNode } = {};
-  const edges: GraphEdge[] = [];
-  
-  clustersData.clusters.forEach((clusterStr) => {
-    // Split the cluster string into node IDs.
-    const nodes = clusterStr.split(",").map((s) => s.trim()).filter(Boolean);
-    
-    // Create node objects if they don't already exist.
-    nodes.forEach((n) => {
-      if (!nodeMap[n]) {
-        nodeMap[n] = { id: n };
-      }
-    });
-    
-    // Connect consecutive nodes with an edge.
-    for (let i = 0; i < nodes.length - 1; i++) {
-      edges.push({ source: nodes[i], target: nodes[i + 1] });
-    }
-  });
-  
-  return { nodes: Object.values(nodeMap), edges };
-}
-
-function clamp(val: number, min: number, max: number) {
-  return Math.min(Math.max(val, min), max);
-}
-
-interface AlternativeDynamicGraphProps {
-  clustersData: ClustersData | null;
-}
-
-export default function AlternativeDynamicGraph({ clustersData }: AlternativeDynamicGraphProps) {
+export default function DynamicGraph({ clustersData, selectedNode }: DynamicGraphProps) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [similarityData, setSimilarityData] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
-  const [graph, setGraph] = useState<Graph | null>(null);
 
-  // Build the graph and compute layout when clustersData changes.
   useEffect(() => {
-    if (clustersData) {
-      // Build graph directly from clustersData.
-      const builtGraph = buildGraphFromClusters(clustersData);
-      
-      // Create a dagre graph and add nodes and edges.
-      const g = new dagre.graphlib.Graph();
-      g.setGraph({});
-      g.setDefaultEdgeLabel(() => ({}));
-      
-      // Add nodes with fixed width/height.
-      builtGraph.nodes.forEach((n) => {
-        g.setNode(n.id, { label: n.id, width: 50, height: 50 });
-      });
-      builtGraph.edges.forEach((e) => {
-        g.setEdge(e.source, e.target);
-      });
-      
-      // Compute layout.
-      dagre.layout(g);
-      
-      // Update node positions.
-      const positionedNodes = builtGraph.nodes.map((n) => {
-        const pos = g.node(n.id);
-        return { ...n, x: pos.x, y: pos.y };
-      });
-      
-      setGraph({ nodes: positionedNodes, edges: builtGraph.edges });
-    }
-  }, [clustersData]);
+    if (!selectedNode) return;
+    const fetchVisualization = async () => {
+      try {
+        const allowedNodes = clustersData
+          ? clustersData.clusters
+              .flatMap(cluster => cluster.split(",").map(n => n.trim()))
+              .filter(n => n !== "")
+          : [];
+          
+        const response = await fetch("/api/get-visualization", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ node: selectedNode, allowedNodes }),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          console.error("Error response:", text);
+          throw new Error("Error fetching visualization data");
+        }
+        const data = await response.json();
+        console.log("Visualization data:", data.results);
+        setSimilarityData(data.results);
+      } catch (error) {
+        console.error("Error fetching visualization data:", error);
+      }
+    };
+    fetchVisualization();
+  }, [selectedNode, clustersData]);
 
-  // Pan/zoom event handlers.
+  const clamp = (val: number, min: number, max: number) => {
+    return Math.min(Math.max(val, min), max);
+  };
+
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (scale > 1) {
       isDraggingRef.current = true;
@@ -219,54 +164,12 @@ export default function AlternativeDynamicGraph({ clustersData }: AlternativeDyn
           position: "relative",
         }}
       >
-        {/* Optionally, render the algorithm name */}
-        {clustersData && (
-          <div style={{ position: "absolute", top: 10, left: 10, color: "#fff", fontSize: "1.2rem", fontWeight: "bold" }}>
-            Algorithm: {clustersData.algorithm}
+        {clustersData ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Button className="border-2 border-black text-sm px-2 py-1">
+              {selectedNode}
+            </Button>
           </div>
-        )}
-        {graph ? (
-          <svg width="1000" height="800">
-            {/* Render edges */}
-            {graph.edges.map((edge, index) => {
-              const source = graph.nodes.find((n) => n.id === edge.source);
-              const target = graph.nodes.find((n) => n.id === edge.target);
-              if (!source || !target) return null;
-              return (
-                <line
-                  key={index}
-                  x1={source.x}
-                  y1={source.y}
-                  x2={target.x}
-                  y2={target.y}
-                  stroke="#000"
-                  markerEnd="url(#arrow)"
-                />
-              );
-            })}
-            <defs>
-              <marker
-                id="arrow"
-                markerWidth="10"
-                markerHeight="10"
-                refX="10"
-                refY="3"
-                orient="auto"
-                markerUnits="strokeWidth"
-              >
-                <path d="M0,0 L0,6 L9,3 z" fill="#000" />
-              </marker>
-            </defs>
-            {/* Render nodes */}
-            {graph.nodes.map((node) => (
-              <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
-                <circle r={20} fill="#fff" stroke="#000" strokeWidth={2} />
-                <text x={0} y={5} textAnchor="middle" fontSize="10" fill="#000" transform="rotate(30)">
-                  {node.id}
-                </text>
-              </g>
-            ))}
-          </svg>
         ) : (
           <div className="p-4 text-center text-white">No graph data available.</div>
         )}

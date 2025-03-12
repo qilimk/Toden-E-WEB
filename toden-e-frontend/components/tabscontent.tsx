@@ -1,4 +1,4 @@
-// app/home/page.tsx
+// components/tabscontent.tsx
 "use client";
 
 import { useState, useEffect } from "react";
