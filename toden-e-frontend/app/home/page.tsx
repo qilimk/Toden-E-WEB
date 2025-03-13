@@ -1,21 +1,29 @@
 // app/home/page.tsx
 "use client";
 
+// Import statements
 import { useMemo, useState, useEffect } from "react";
-import Home from "@/components/tabscontent";
-import Navbar from '@/components/navbar';
-import DynamicGraph from "@/components/DynamicGraph";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+// Custom Components
+import FunctionTabs from "@/components/FunctionTabs";
+import Navbar from '@/components/Navbar';
+import DynamicGraph from "@/components/DynamicGraph";
 import { NodeCombobox } from "@/components/NodeCombobox";
+
+// Function for Home Page.
+// 3 Main Components: Dynamic Graph, Function Tabs, Node Combobox
 
 export default function HomePage() {
   const [clustersData, setClustersData] = useState<{ clusters: string[] } | null>(null);
   const [view, setView] = useState("tabs");
   const [selectedNode, setSelectedNode] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<string>("");
 
   const nodesArray = useMemo(() => {
     if (!clustersData) return [];
+    if (!clustersData?.clusters) return [];
     const nodesSet = new Set<string>();
     clustersData.clusters.forEach((cluster: string) => {
       cluster.split(",").forEach((n) => {
@@ -39,7 +47,10 @@ export default function HomePage() {
           <>
           <div className="flex-col text-center">
             <p>
-              - Change graph visualization to visualize CoCo graph
+              - Change graph loading issues (overlap, no loading period,)
+            </p>
+            <p>
+              - Allow Hierarchical/Tree graph loading?
             </p>
             <p>
               - Hookup summarize functionality
@@ -47,10 +58,13 @@ export default function HomePage() {
             <p>
               - Return a downloadable csv file with predict for download
             </p>
+            <p>
+              - Integrate Summarize and Visualize with prediction
+            </p>
           </div>  
           <div className="flex flex-row h-full w-full items-center">
             <div className="flex-1">
-              <Home clustersData={clustersData} setClustersData={setClustersData} setView={setView} />
+              <FunctionTabs setClustersData={setClustersData} setView={setView} setSelectedNode={setSelectedNode} setSelectedFile={setSelectedFile} />
             </div>
               <Button 
                 variant="ghost"
@@ -70,7 +84,7 @@ export default function HomePage() {
             >
               <ArrowLeft />
             </Button>
-            <DynamicGraph clustersData={clustersData} selectedNode={selectedNode} />
+            <DynamicGraph clustersData={clustersData} selectedNode={selectedNode} selectedFile={selectedFile} />
             {clustersData && (
               <div className="absolute top-20 left-20 z-20">
                 <NodeCombobox nodes={nodesArray} onSelect={setSelectedNode} />

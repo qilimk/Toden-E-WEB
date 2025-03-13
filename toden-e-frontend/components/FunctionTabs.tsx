@@ -1,70 +1,24 @@
 // components/tabscontent.tsx
 "use client";
 
+// Import Statements
 import { useState, useEffect } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Form, FormControl, FormField, FormLabel } from "@/components/ui/form";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger,} from "@/components/ui/tabs";
 import { HelpCircle } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
-import DynamicGraph from "@/components/DynamicGraph";
 
+// Form Schema for Prediction Functionality
 const PredictFormSchema = z
   .object({
     file: z.string().optional(),
@@ -100,6 +54,7 @@ const PredictFormSchema = z
     { message: "Please select an alpha value or enter a custom one.", path: ["alphaCustom"] }
   );
 
+// Form Schema for Visualization Functionality
 const VisualizeFormSchema = z
   .object({
     file: z.string().optional(),
@@ -111,29 +66,31 @@ const VisualizeFormSchema = z
     { message: "Please select a file or upload one.", path: ["fileUpload"] }
 );
 
+// Form Schema for Summarization Functionality
 const SummarizeFormSchema = z
   .object({
     file: z.string().optional(),
-    fileUpload: z.any().optional(), // FileList from the file input
+    fileUpload: z.any().optional(),
   })
   .refine(
     (data) => data.file || (data.fileUpload && data.fileUpload.length > 0),
     { message: "Please select a file or upload one.", path: ["fileUpload"] }
 );
 
-// const PartitionFormSchema = z.object({
-//   function: z.string().min(7, {
-//     message: "Function must be selected.",
-//   }).max(50),
-// });
-
+// Props for this component.
+// Clusters Data: 
+// View: View for home page. (Tabs or Graph)
+// Selected Node: Node selected by the user for visualization/inspection.
+// Selected File: File that is being used in the backend to deliver front end information.
 interface TabsContentProps {
-  clustersData: any;
   setClustersData: (data: any) => void;
-  setView: (view: string) => void; // New prop for view control
+  setView: (view: string) => void;
+  setSelectedNode: (data: any) => void;
+  setSelectedFile: (data: any) => void;
 }
 
-export default function Home({ clustersData, setClustersData, setView }: TabsContentProps) {
+// Function Tabs Component
+export default function FunctionTabs({ setClustersData, setView, setSelectedNode, setSelectedFile }: TabsContentProps) {
   const [predictFileKey, setPredictFileKey] = useState(0);
   const [visualizeFileKey, setVisualizeFileKey] = useState(0);
   const [summarizeFileKey, setSummarizeFileKey] = useState(0);
@@ -141,15 +98,16 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
   const [progress, setProgress] = useState(0);
   const [alertOpen, setAlertOpen] = useState(false);
 
+  // Provides Progress Bar Functionality
   useEffect(() => {
     if (!isLoading) return;
 
-    // Reset progress to 0 when a request starts.
     setProgress(0);
-    const timer10 = setTimeout(() => setProgress(10), 10000);     // at 10 sec, progress = 10
-    const timer30 = setTimeout(() => setProgress(30), 30000);     // at 30 sec, progress = 30
-    const timer60 = setTimeout(() => setProgress(60), 60000);     // at 60 sec, progress = 60
-    const timer100 = setTimeout(() => setProgress(100), 100000);  // at 100 sec, progress = 100
+    const timer10 = setTimeout(() => setProgress(8.5), 10000);
+    const timer30 = setTimeout(() => setProgress(25), 30000);
+    const timer60 = setTimeout(() => setProgress(50), 60000);
+    const timer100 = setTimeout(() => setProgress(83.3), 100000);
+    const timer120 = setTimeout(() => setProgress(90), 120000);
 
     // Cleanup the timers if the request completes early.
     return () => {
@@ -157,9 +115,11 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
       clearTimeout(timer30);
       clearTimeout(timer60);
       clearTimeout(timer100);
+      clearTimeout(timer120);
     };
   }, [isLoading]);
 
+  // Prediction Function Form
   const PredictForm = useForm({
     resolver: zodResolver(PredictFormSchema),
     defaultValues: {
@@ -173,6 +133,7 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
     },
   });
 
+  // Visualize Function Form
   const VisualizeForm = useForm({
     resolver: zodResolver(VisualizeFormSchema),
     defaultValues: {
@@ -181,6 +142,7 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
     },
   });
 
+  // Summarize Function Form
   const SummarizeForm = useForm({
     resolver: zodResolver(SummarizeFormSchema),
     defaultValues: {
@@ -189,6 +151,8 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
     },
   });
   
+  // Function when Prediction is Submitted
+  // Logs data, starts progress/loading, fills form, resets form, calls python backend and waits for a return
   async function PredictSubmit(data: z.infer<typeof PredictFormSchema>) {
     console.log(data)
     setIsLoading(true);
@@ -196,15 +160,12 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
 
     const formData = new FormData();
 
-    // Append the file selection (if any)
     formData.append('file', data.file || '');
     
-    // If a file was uploaded, add it (we assume fileUpload is an array of files)
     if (data.fileUpload && data.fileUpload.length > 0) {
       formData.append('fileUpload', data.fileUpload[0]);
     }
     
-    // Append other form fields
     formData.append('alphaSelect', data.alphaSelect || '');
     formData.append('alphaCustom', data.alphaCustom || '');
     formData.append('visualize', data.visualize || '');
@@ -225,47 +186,48 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
 
       const result = await response.json();
       console.log('Predict result:', result);
-      // Handle result (e.g., update state, show notifications, etc.)
     } catch (error) {
       console.error('Error submitting predict form:', error);
     } finally {
-      setIsLoading(false); // end loading regardless of outcome
+      setIsLoading(false);
       setPredictFileKey(prev => prev + 1);
     }
   }
 
+  // CURRENT WORK
+  // Function when Visualization is Submitted
+  // Logs data, starts progress/loading, sets selected file, fills form
+  // calls Next api for data retrieval, sets selected node (first node), sets the data for graph and changes views
   async function VisualizeSubmit(data: z.infer<typeof VisualizeFormSchema>) {
-    console.log(data);
+    // console.log(data);
     setIsLoading(true);
     setProgress(0);
     const formData = new FormData();
-  
-    // Append file selection (if any)
+    setSelectedFile(data.file);
+    
     formData.append('file', data.file || '');
     
-    // Append file upload (if provided)
     if (data.fileUpload && data.fileUpload.length > 0) {
       formData.append('fileUpload', data.fileUpload[0]);
     }
-
+  
     VisualizeForm.reset();
     
     try {
-      const response = await fetch('http://localhost:5000/visualize', {
+      const response = await fetch('/api/create-m-type-data', {
         method: 'POST',
         body: formData,
       });
-
+  
       if (response.status !== 200) {
         setAlertOpen(true);
       }
-
+  
       const result = await response.json();
-      console.log('Visualize result:', result);
-      setClustersData(result.result);
+      // console.log('Visualize result:', result);
+      setSelectedNode(result.selectedNode);
+      setClustersData({ clusters: result.allowedNodes });
       setView("graph");
-      // console.log(clustersData)
-      // Handle result as needed (e.g., update state, show notifications, etc.)
     } catch (error) {
       console.error('Error submitting visualize form:', error);
     } finally {
@@ -274,6 +236,7 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
     }
   }
 
+  // Function when Summarization is Submitted
   async function SummarizeSubmit(data: z.infer<typeof SummarizeFormSchema>) {
     console.log(data);
     setIsLoading(true);
@@ -420,7 +383,7 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
                                 <SelectContent>
                                   <SelectGroup>
                                     <SelectLabel>File</SelectLabel>
-                                    <SelectItem value="default">Working</SelectItem>
+                                    <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
                                     {/* <SelectItem value="file2">File2</SelectItem>
                                     <SelectItem value="file3">File3</SelectItem>
                                     <SelectItem value="file4">File4</SelectItem> */}
@@ -673,7 +636,7 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
                                 <SelectContent>
                                   <SelectGroup>
                                     <SelectLabel>File</SelectLabel>
-                                    <SelectItem value="default">Working</SelectItem>
+                                    <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
                                     {/* <SelectItem value="file2">File2</SelectItem>
                                     <SelectItem value="file3">File3</SelectItem>
                                     <SelectItem value="file4">File4</SelectItem> */}
@@ -807,7 +770,7 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
                                 <SelectContent>
                                   <SelectGroup>
                                     <SelectLabel>File</SelectLabel>
-                                    <SelectItem value="default">Working</SelectItem>
+                                    <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
                                     {/* <SelectItem value="file2">File2</SelectItem>
                                     <SelectItem value="file3">File3</SelectItem>
                                     <SelectItem value="file4">File4</SelectItem> */}
@@ -869,7 +832,7 @@ export default function Home({ clustersData, setClustersData, setView }: TabsCon
           <AlertDialogHeader>
             <AlertDialogTitle>There was an error in fulfilling your request. Please try again.</AlertDialogTitle>
             <AlertDialogDescription>
-              If this problem persists, please contact us at: xyz1234@auburn.edu.
+              If this problem persists, please contact us at: xyz1234@auburn.edu. PLEASE NOTE: The file upload feature for each function of Toden-E will not work currently.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

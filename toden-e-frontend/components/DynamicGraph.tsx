@@ -1,15 +1,22 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useMemo, useEffect, useRef, useState } from "react";
 import { Plus, Minus} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface DynamicGraphProps {
   clustersData: { clusters: string[] } | null;
   selectedNode: string;
+  selectedFile: string | null;
 }
 
-export default function DynamicGraph({ clustersData, selectedNode }: DynamicGraphProps) {
+export default function DynamicGraph({ clustersData, selectedNode, selectedFile }: DynamicGraphProps) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [similarityData, setSimilarityData] = useState<any>(null);
@@ -30,7 +37,7 @@ export default function DynamicGraph({ clustersData, selectedNode }: DynamicGrap
         const response = await fetch("/api/get-visualization", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ node: selectedNode, allowedNodes }),
+          body: JSON.stringify({ node: selectedNode, allowedNodes, fileName: selectedFile }),
         });
         if (!response.ok) {
           const text = await response.text();
@@ -139,6 +146,40 @@ export default function DynamicGraph({ clustersData, selectedNode }: DynamicGrap
     }
   };
 
+  const overlayWidth = containerRef.current ? containerRef.current.clientWidth : 1000;
+  const overlayHeight = containerRef.current ? containerRef.current.clientHeight : 800;
+  const centerX = overlayWidth / 2;
+  const centerY = overlayHeight / 2;
+
+  const surroundingNodes = useMemo(() => {
+    if (!similarityData || similarityData.length === 0) return [];
+    let minSim = Infinity;
+    let maxSim = -Infinity;
+    similarityData.forEach((item: any) => {
+      const sim = parseFloat(item.SIMILARITY);
+      if (sim < minSim) minSim = sim;
+      if (sim > maxSim) maxSim = sim;
+    });
+    const minRadius = 100; // closest distance (for high similarity)
+    const maxRadius = 425; // furthest distance (for low similarity)
+    return similarityData.map((item: any, index: number) => {
+      const sim = parseFloat(item.SIMILARITY);
+      const normSim = maxSim !== minSim ? (sim - minSim) / (maxSim - minSim) : 1;
+      // Invert the normalized value: higher similarity → smaller radius.
+      const radius = maxRadius - normSim * (maxRadius - minRadius);
+      const angle = (2 * Math.PI * index) / similarityData.length;
+      const x = centerX + radius * Math.cos(angle);
+      const y = centerY + radius * Math.sin(angle);
+      return { ...item, x, y, normSim };
+    });
+  }, [similarityData, centerX, centerY]);
+
+  // Map normalized similarity (0 to 1) to a color from red (weak) to green (strong).
+  const getColorForSimilarity = (norm: number) => {
+    const hue = norm * 120; // 0 = red, 120 = green.
+    return `hsl(${hue}, 100%, 50%)`;
+  };
+
   return (
     <div
       ref={containerRef}
@@ -148,32 +189,73 @@ export default function DynamicGraph({ clustersData, selectedNode }: DynamicGrap
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onWheel={handleWheel}
-      style={{
-        cursor: scale > 1 ? (isDraggingRef.current ? "grabbing" : "grab") : "default",
-      }}
+      style={{ cursor: scale > 1 ? (isDraggingRef.current ? "grabbing" : "grab") : "default" }}
     >
+      {/* Transformed Container: background and graph content scale together */}
       <div
         style={{
           width: "100%",
           height: "100%",
           transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
           transformOrigin: "top left",
-          backgroundColor: "#2f2f2f",
-          backgroundImage: "radial-gradient(circle, #fff 1.25px, transparent 0)",
-          backgroundSize: "25px 25px",
           position: "relative",
         }}
       >
-        {clustersData ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Button className="border-2 border-black text-sm px-2 py-1">
-              {selectedNode}
-            </Button>
+        {/* Background */}
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            backgroundColor: "#2f2f2f",
+            backgroundImage: "radial-gradient(circle, #fff 1.25px, transparent 0)",
+            backgroundSize: "25px 25px",
+          }}
+        />
+        {/* Overlay: Central and Surrounding Nodes */}
+        <div className="absolute inset-0">
+          {/* Fixed Central Node */}
+          <div className="absolute" style={{ left: centerX - 40, top: centerY - 20 }}>
+          <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button className="border-2 border-black text-sm px-2 py-1">
+                    {selectedNode}
+                  </Button>
+                  </TooltipTrigger>
+                <TooltipContent>
+                  {selectedNode}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
-        ) : (
-          <div className="p-4 text-center text-white">No graph data available.</div>
-        )}
+          {/* Surrounding Nodes as Buttons */}
+          {surroundingNodes.map((node, idx) => (
+            <div
+              key={idx}
+              className="absolute"
+              style={{ left: node.x - 30, top: node.y - 15 }}
+            >
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    className="border-2 border-black text-xs px-2 py-1"
+                    style={{ backgroundColor: getColorForSimilarity(node.normSim) }}
+                  >
+                    {node.GS_B_ID}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {node.GS_B_ID}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* Zoom Controls (outside the transformed container) */}
       <div className="absolute top-4 right-4 flex flex-col space-y-2">
         <Button onClick={handleZoomIn} disabled={scale >= 5.0} className="p-2 bg-white rounded-full shadow">
           <Plus size={24} />
