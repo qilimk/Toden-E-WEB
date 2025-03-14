@@ -47,11 +47,16 @@ export default function HomePage() {
           <>
           <div className="flex-col text-center">
             <p>
-              - Change graph loading issues (overlap, no loading period,)
+              - Create siderbar on visualization
             </p>
+            <p>
+              - Create clustering visualization
+            </p>
+            <p> - Summarization with clustering graph results</p>
             <p>
               - Allow Hierarchical/Tree graph loading?
             </p>
+            
             <p>
               - Hookup summarize functionality
             </p>

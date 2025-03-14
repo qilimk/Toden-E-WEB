@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo, useEffect, useRef, useState } from "react";
-import { Plus, Minus} from "lucide-react";
+import React, { useMemo, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -20,9 +20,27 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [similarityData, setSimilarityData] = useState<any>(null);
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
+  const [selectedEdge, setSelectedEdge] = useState<{
+    from: string;
+    to: string;
+    similarity: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // Measure container dimensions once the component mounts.
+  useLayoutEffect(() => {
+    if (containerRef.current) {
+      setDimensions({
+        width: containerRef.current.clientWidth,
+        height: containerRef.current.clientHeight,
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (!selectedNode) return;
@@ -52,11 +70,9 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
       }
     };
     fetchVisualization();
-  }, [selectedNode, clustersData]);
+  }, [selectedNode, clustersData, selectedFile]);
 
-  const clamp = (val: number, min: number, max: number) => {
-    return Math.min(Math.max(val, min), max);
-  };
+  const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (scale > 1) {
@@ -70,7 +86,6 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
     const dx = e.clientX - lastPosRef.current.x;
     const dy = e.clientY - lastPosRef.current.y;
     let newOffset = { x: offset.x + dx, y: offset.y + dy };
-
     if (containerRef.current) {
       const cw = containerRef.current.clientWidth;
       const ch = containerRef.current.clientHeight;
@@ -93,23 +108,26 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
     const delta = -e.deltaY;
-    let newScale = scale;
-    newScale = delta > 0 ? scale * 1.1 : scale * 0.9;
+    let newScale = delta > 0 ? scale * 1.1 : scale * 0.9;
     newScale = Math.min(Math.max(newScale, 1), 5.0);
-    setScale(newScale);
-    if (newScale === 1) {
-      setOffset({ x: 0, y: 0 });
-    } else if (containerRef.current) {
+    const factor = newScale / scale - 1;
+    let newOffsetX = offset.x - factor * mx;
+    let newOffsetY = offset.y - factor * my;
+    if (containerRef.current) {
       const cw = containerRef.current.clientWidth;
       const ch = containerRef.current.clientHeight;
       const minX = cw - cw * newScale;
       const minY = ch - ch * newScale;
-      setOffset((prev) => ({
-        x: clamp(prev.x, minX, 0),
-        y: clamp(prev.y, minY, 0),
-      }));
+      newOffsetX = clamp(newOffsetX, minX, 0);
+      newOffsetY = clamp(newOffsetY, minY, 0);
     }
+    setScale(newScale);
+    setOffset({ x: newOffsetX, y: newOffsetY });
   };
 
   const handleZoomIn = () => {
@@ -146,10 +164,10 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
     }
   };
 
-  const overlayWidth = containerRef.current ? containerRef.current.clientWidth : 1000;
-  const overlayHeight = containerRef.current ? containerRef.current.clientHeight : 800;
-  const centerX = overlayWidth / 2;
-  const centerY = overlayHeight / 2;
+  const overlayWidth = dimensions ? dimensions.width : (containerRef.current ? containerRef.current.clientWidth : 1000);
+  const overlayHeight = dimensions ? dimensions.height : (containerRef.current ? containerRef.current.clientHeight : 800);
+  const centerX = dimensions ? dimensions.width / 2 : overlayWidth / 2;
+  const centerY = dimensions ? dimensions.height / 2 : overlayHeight / 2;
 
   const surroundingNodes = useMemo(() => {
     if (!similarityData || similarityData.length === 0) return [];
@@ -165,7 +183,6 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
     return similarityData.map((item: any, index: number) => {
       const sim = parseFloat(item.SIMILARITY);
       const normSim = maxSim !== minSim ? (sim - minSim) / (maxSim - minSim) : 1;
-      // Invert the normalized value: higher similarity → smaller radius.
       const radius = maxRadius - normSim * (maxRadius - minRadius);
       const angle = (2 * Math.PI * index) / similarityData.length;
       const x = centerX + radius * Math.cos(angle);
@@ -174,11 +191,19 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
     });
   }, [similarityData, centerX, centerY]);
 
-  // Map normalized similarity (0 to 1) to a color from red (weak) to green (strong).
   const getColorForSimilarity = (norm: number) => {
     const hue = norm * 120; // 0 = red, 120 = green.
     return `hsl(${hue}, 100%, 50%)`;
   };
+
+  // Don't render overlay until dimensions have been measured
+  if (!dimensions) {
+    return (
+      <div ref={containerRef} className="w-full h-full flex items-center justify-center relative">
+        <div className="text-white text-lg font-bold">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -191,7 +216,7 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
       onWheel={handleWheel}
       style={{ cursor: scale > 1 ? (isDraggingRef.current ? "grabbing" : "grab") : "default" }}
     >
-      {/* Transformed Container: background and graph content scale together */}
+      {/* Transformed Container: Background and Graph Content Scale Together */}
       <div
         style={{
           width: "100%",
@@ -201,7 +226,6 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
           position: "relative",
         }}
       >
-        {/* Background */}
         <div
           style={{
             width: "100%",
@@ -213,45 +237,71 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
         />
         {/* Overlay: Central and Surrounding Nodes */}
         <div className="absolute inset-0">
-          {/* Fixed Central Node */}
-          <div className="absolute" style={{ left: centerX - 40, top: centerY - 20 }}>
-          <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button className="border-2 border-black text-sm px-2 py-1">
-                    {selectedNode}
-                  </Button>
-                  </TooltipTrigger>
-                <TooltipContent>
-                  {selectedNode}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          {/* Surrounding Nodes as Buttons */}
-          {surroundingNodes.map((node, idx) => (
-            <div
-              key={idx}
-              className="absolute"
-              style={{ left: node.x - 30, top: node.y - 15 }}
-            >
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className="border-2 border-black text-xs px-2 py-1"
-                    style={{ backgroundColor: getColorForSimilarity(node.normSim) }}
-                  >
-                    {node.GS_B_ID}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {node.GS_B_ID}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          {clustersData ? (
+            <>
+              {/* SVG for edges from the central node to each surrounding node */}
+              <svg className="absolute inset-0" width={overlayWidth} height={overlayHeight}>
+                {surroundingNodes.map((node: any, idx: number) => (
+                  <line
+                    key={idx}
+                    x1={centerX}
+                    y1={centerY}
+                    x2={node.x}
+                    y2={node.y}
+                    stroke="black"
+                    strokeWidth="2"
+                    style={{ pointerEvents: 'visibleStroke', cursor: 'pointer' }}
+                    onClick={() => console.log(`Edge from ${selectedNode} to ${node.GS_B_ID} clicked`)}
+                    onMouseEnter={(e) => (e.currentTarget.style.stroke = "blue")}
+                    onMouseLeave={(e) => (e.currentTarget.style.stroke = "black")}
+                  />
+                ))}
+              </svg>
+              {/* Fixed Central Node using absolute positioning */}
+              <div className="absolute" style={{ left: centerX - 40, top: centerY - 20 }}>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button className="border-2 border-black text-sm px-2 py-1 pointer-events-auto">
+                        {selectedNode}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {selectedNode}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              {/* Surrounding Nodes as Buttons */}
+              {surroundingNodes.map((node: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="absolute pointer-events-auto"
+                  style={{ left: node.x - 30, top: node.y - 15 }}
+                >
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          className="border-2 border-black text-xs px-2 py-1"
+                          style={{ backgroundColor: getColorForSimilarity(node.normSim) }}
+                        >
+                          {node.GS_B_ID}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {node.GS_B_ID}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              ))}
+            </>
+          ) : (
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 text-white text-lg font-bold">
+              No graph data available
             </div>
-          ))}
+          )}
         </div>
       </div>
 
