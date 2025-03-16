@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, TableOfContents, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -10,13 +10,18 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import SummaryDrawer from "@/components/SummaryDrawer";
+
 interface DynamicGraphProps {
   clustersData: { clusters: string[] } | null;
   selectedNode: string;
   selectedFile: string | null;
+  setSidebarOpen: (open: boolean) => void;
+  setView: (view: string) => void;
+  selectedFunction: string;
 }
 
-export default function DynamicGraph({ clustersData, selectedNode, selectedFile }: DynamicGraphProps) {
+export default function DynamicGraph({ clustersData, selectedNode, selectedFile, setSidebarOpen, setView, selectedFunction }: DynamicGraphProps) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [similarityData, setSimilarityData] = useState<any>(null);
@@ -31,6 +36,7 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
     x: number;
     y: number;
   } | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Measure container dimensions once the component mounts.
   useLayoutEffect(() => {
@@ -52,7 +58,7 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
               .filter(n => n !== "")
           : [];
           
-        const response = await fetch("/api/get-visualization", {
+        const response = await fetch("/api/get-coco-visualization", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ node: selectedNode, allowedNodes, fileName: selectedFile }),
@@ -216,6 +222,33 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
       onWheel={handleWheel}
       style={{ cursor: scale > 1 ? (isDraggingRef.current ? "grabbing" : "grab") : "default" }}
     >
+      {!clustersData && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-white text-lg font-bold z-10">
+          No graph data available
+        </div>
+      )}
+      <div className="flex absolute top-4 left-4 z-10 items-center">
+        <Button
+          // @ts-ignore
+            onClick={() => setSidebarOpen((prev: boolean) => !prev)}
+            variant="outline"
+          >
+          <TableOfContents/>
+        </Button>
+        <Button
+            onClick={() => setView("tabs")}
+            variant="outline"
+          >
+          Select Functionality
+        </Button>
+      </div>
+      <Button
+          onClick={() => setDrawerOpen(prev => !prev)}
+          className="absolute bottom-4 right-4 z-10"
+          variant="outline"
+        >
+        {drawerOpen ? <ChevronDown /> : <ChevronUp />}
+      </Button>
       {/* Transformed Container: Background and Graph Content Scale Together */}
       <div
         style={{
@@ -236,8 +269,8 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
           }}
         />
         {/* Overlay: Central and Surrounding Nodes */}
-        <div className="absolute inset-0">
-          {clustersData ? (
+        {clustersData && (
+          selectedFunction === "CoCo" ? (
             <>
               {/* SVG for edges from the central node to each surrounding node */}
               <svg className="absolute inset-0" width={overlayWidth} height={overlayHeight}>
@@ -251,13 +284,15 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
                     stroke="black"
                     strokeWidth="2"
                     style={{ pointerEvents: 'visibleStroke', cursor: 'pointer' }}
-                    onClick={() => console.log(`Edge from ${selectedNode} to ${node.GS_B_ID} clicked`)}
+                    onClick={() =>
+                      console.log(`Edge from ${selectedNode} to ${node.GS_B_ID} clicked`)
+                    }
                     onMouseEnter={(e) => (e.currentTarget.style.stroke = "blue")}
                     onMouseLeave={(e) => (e.currentTarget.style.stroke = "black")}
                   />
                 ))}
               </svg>
-              {/* Fixed Central Node using absolute positioning */}
+              {/* Fixed Central Node */}
               <div className="absolute" style={{ left: centerX - 40, top: centerY - 20 }}>
                 <TooltipProvider>
                   <Tooltip>
@@ -297,20 +332,23 @@ export default function DynamicGraph({ clustersData, selectedNode, selectedFile 
                 </div>
               ))}
             </>
-          ) : (
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 text-white text-lg font-bold">
-              No graph data available
-            </div>
-          )}
-        </div>
+          ) : selectedFunction === "toden-e" ? (
+            <>
+              {/* Render alternative layout for toden-e clustering */}
+              <div className="absolute inset-0 flex items-center justify-center text-white text-xl">
+                Toden-e clustering functionality coming soon.
+              </div>
+            </>
+          ) : null
+        )}
       </div>
 
       {/* Zoom Controls (outside the transformed container) */}
       <div className="absolute top-4 right-4 flex flex-col space-y-2">
-        <Button onClick={handleZoomIn} disabled={scale >= 5.0} className="p-2 bg-white rounded-full shadow">
-          <Plus size={24} />
+        <Button onClick={handleZoomIn} variant="outline" disabled={scale >= 5.0} className="p-2 rounded-full">
+          <Plus />
         </Button>
-        <Button onClick={handleZoomOut} disabled={scale <= 1} className="p-2 bg-white rounded-full shadow">
+        <Button onClick={handleZoomOut} variant="outline" disabled={scale <= 1} className="p-2 rounded-full">
           <Minus />
         </Button>
       </div>

@@ -3,23 +3,25 @@
 
 // Import statements
 import { useMemo, useState, useEffect } from "react";
-import { ArrowRight, ArrowLeft } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Custom Components
 import FunctionTabs from "@/components/FunctionTabs";
 import Navbar from '@/components/Navbar';
 import DynamicGraph from "@/components/DynamicGraph";
-import { NodeCombobox } from "@/components/NodeCombobox";
+import AppSidebar from "@/components/AppSidebar";
 
 // Function for Home Page.
 // 3 Main Components: Dynamic Graph, Function Tabs, Node Combobox
 
 export default function HomePage() {
   const [clustersData, setClustersData] = useState<{ clusters: string[] } | null>(null);
-  const [view, setView] = useState("tabs");
   const [selectedNode, setSelectedNode] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<string>("");
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [selectedFunction, setSelectedFunction] = useState<string>("toden-e");
+  const [view, setView] = useState<string>("graph");
 
   const nodesArray = useMemo(() => {
     if (!clustersData) return [];
@@ -43,60 +45,43 @@ export default function HomePage() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Navbar />
+      <div className="flex flex-row h-full w-full relative">
         {view === "tabs" ? (
           <>
-          <div className="flex-col text-center">
-            <p>
-              - Create siderbar on visualization
-            </p>
-            <p>
-              - Create clustering visualization
-            </p>
-            <p> - Summarization with clustering graph results</p>
-            <p>
-              - Allow Hierarchical/Tree graph loading?
-            </p>
-            
-            <p>
-              - Hookup summarize functionality
-            </p>
-            <p>
-              - Return a downloadable csv file with predict for download
-            </p>
-            <p>
-              - Integrate Summarize and Visualize with prediction
-            </p>
-          </div>  
-          <div className="flex flex-row h-full w-full items-center">
-            <div className="flex-1">
-              <FunctionTabs setClustersData={setClustersData} setView={setView} setSelectedNode={setSelectedNode} setSelectedFile={setSelectedFile} />
-            </div>
-              <Button 
-                variant="ghost"
-                onClick={() => setView("graph")}
-                className="rounded-full"
-              >
-                <ArrowRight />
-              </Button>
-          </div>
+            <Button
+              variant="ghost"
+              className="absolute top-4 right-4"
+              onClick={() => setView("graph")}
+            >
+              <X />
+            </Button>
+            <FunctionTabs
+              setClustersData={setClustersData} 
+              setSelectedNode={setSelectedNode}
+              setSelectedFile={setSelectedFile}
+              setView={setView}
+            />
           </>
         ) : (
-          <div className="flex flex-row h-full w-full items-center space-x-2">
-            <Button 
-              variant="ghost"
-              onClick={() => setView("tabs")}
-              className="rounded-full"
-            >
-              <ArrowLeft />
-            </Button>
-            <DynamicGraph clustersData={clustersData} selectedNode={selectedNode} selectedFile={selectedFile} />
-            {clustersData && (
-              <div className="absolute top-20 left-20 z-20">
-                <NodeCombobox nodes={nodesArray} onSelect={setSelectedNode} />
-              </div>
-            )}
-          </div>
+          <>
+            {sidebarOpen && <AppSidebar 
+                              nodes={nodesArray} 
+                              setSelectedNode={setSelectedNode} 
+                              selectedFunction={selectedFunction}
+                              setSelectedFunction={setSelectedFunction}
+                            />
+            }
+            <DynamicGraph 
+              clustersData={clustersData} 
+              selectedNode={selectedNode} 
+              selectedFile={selectedFile} 
+              setSidebarOpen={setSidebarOpen}
+              setView={setView}
+              selectedFunction={selectedFunction}
+            />
+          </>
         )}
+      </div>
     </div>
   );
 }

@@ -79,18 +79,17 @@ const SummarizeFormSchema = z
 
 // Props for this component.
 // Clusters Data: 
-// View: View for home page. (Tabs or Graph)
 // Selected Node: Node selected by the user for visualization/inspection.
 // Selected File: File that is being used in the backend to deliver front end information.
 interface TabsContentProps {
   setClustersData: (data: any) => void;
-  setView: (view: string) => void;
   setSelectedNode: (data: any) => void;
   setSelectedFile: (data: any) => void;
+  setView: (view: string) => void;
 }
 
 // Function Tabs Component
-export default function FunctionTabs({ setClustersData, setView, setSelectedNode, setSelectedFile }: TabsContentProps) {
+export default function FunctionTabs({ setClustersData, setSelectedNode, setSelectedFile, setView }: TabsContentProps) {
   const [predictFileKey, setPredictFileKey] = useState(0);
   const [visualizeFileKey, setVisualizeFileKey] = useState(0);
   const [summarizeFileKey, setSummarizeFileKey] = useState(0);
@@ -197,7 +196,7 @@ export default function FunctionTabs({ setClustersData, setView, setSelectedNode
   // CURRENT WORK
   // Function when Visualization is Submitted
   // Logs data, starts progress/loading, sets selected file, fills form
-  // calls Next api for data retrieval, sets selected node (first node), sets the data for graph and changes views
+  // calls Next api for data retrieval, sets selected node (first node), sets the data for graph
   async function VisualizeSubmit(data: z.infer<typeof VisualizeFormSchema>) {
     // console.log(data);
     setIsLoading(true);
@@ -276,426 +275,296 @@ export default function FunctionTabs({ setClustersData, setView, setSelectedNode
   }
 
   return (
-      <div className="flex flex-col justify-center items-center">
-        {isLoading ? (
-          // Show progress bar if waiting for backend response.
-          <div className="w-1/2">
-            <Progress value={progress} max={120} />
-          </div>
-        )
-        : 
-        (
-        <Tabs defaultValue="predict">
-          <TabsList className="grid w-full grid-cols-3 space-x-2">
-            <TabsTrigger value="predict">Predict</TabsTrigger>
-            <TabsTrigger value="visualize">Visualize</TabsTrigger>
-            <TabsTrigger value="summarize">Summarize</TabsTrigger>
-            {/* <TabsTrigger value="partition-score">Partition Score</TabsTrigger> */}
-          </TabsList>
-          <TabsContent value="predict">
-            <Card className="w-full">
-              <CardHeader className="flex flex-row justify-between">
-                <div className="flex flex-col">
-                  <CardTitle>Prediction Function</CardTitle>
-                  <CardDescription>This is the prediction tool.</CardDescription>
-                </div>
-                <Dialog>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DialogTrigger asChild>
-                          <Button variant="outline">
-                            <HelpCircle />
-                          </Button>
-                        </DialogTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>How It Works</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <DialogContent className="sm:max-w-[800px]">
-                    <DialogHeader>
-                      <DialogTitle>How It Works</DialogTitle>
-                      <DialogDescription className="flex flex-col space-y-2">
-                        <p>
-                          The Predict Function allows the user to select or upload a file, 
-                          select or enter an alpha value, choose whether or not they want visualization, 
-                          choose number of clusters, and choose whether or not they want summarization.
-                          Upon submission, there will be a loading period where the user will need to wait
-                          for Toden-E to complete its calculations. Then, Toden-E will forward the user to the page corresponding
-                          to the user's desired Toden-E functionality.
-                        </p>
-                        <p className="text-lg font-semibold leading-none tracking-tight dark:text-white">
-                          Example File Format
-                        </p>
-                        <p>
-                          Here is the format of the file needed for the tool to work properly {'(Use .txt files)'}:
-                        </p>
-                        <p>
-                        GO: {'{id}'}
-                        </p>
-                        <p>
-                        GO: {'{id}'}
-                        </p>
-                        <p>
-                        ...
-                        </p>
-                        <p>
-                        GO: {'{id}'}
-                        </p>
-                        <p>
-                          Example of an id: 0006413
-                        </p>
-                        <p>
-                          Visit {'(link goes here)'} to get ids
-                        </p>
-                        <p className="mt-2 text-xs text-gray-500">
-                          A file selection takes precedent over a file upload and an alpha value selection takes precedent over a custom alpha value.
-                        </p>
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button>Continue</Button>
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <Form {...PredictForm}>
-                <form onSubmit={PredictForm.handleSubmit(PredictSubmit)}>
-                  <div className="px-4 pb-4 space-y-4">
-                    {/* Row 1: File selection */}
-                    <div className="grid grid-cols-8 gap-4 items-center">
-                      <FormLabel className="col-span-1 text-right">File Selection</FormLabel>
-                      {/* Select input (choose file from dropdown) */}
-                      <div className="col-span-3">
-                        <FormField
-                          control={PredictForm.control}
-                          name="file"
-                          render={({ field }) => (
-                            <FormControl>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a file..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectGroup>
-                                    <SelectLabel>File</SelectLabel>
-                                    <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
-                                    {/* <SelectItem value="file2">File2</SelectItem>
-                                    <SelectItem value="file3">File3</SelectItem>
-                                    <SelectItem value="file4">File4</SelectItem> */}
-                                  </SelectGroup>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                          )}
-                        />
-                      </div>
-                      {/* "or" text */}
-                      <div className="col-span-1 text-center">
-                        <span>or</span>
-                      </div>
-                      {/* File upload input */}
-                      <div className="col-span-3">
-                        <FormField
-                          control={PredictForm.control}
-                          name="fileUpload"
-                          render={({ field }) => (
-                            <FormControl>
-                              <Input
-                                key={`predict-file-${predictFileKey}`}
-                                type="file"
-                                onChange={(e) => field.onChange(e.target.files)}
-                                accept=".txt"
-                              />
-                            </FormControl>
-                          )}
-                        />
-                      </div>
+    <div className="flex justify-center items-center h-full w-full">
+      
+      {isLoading ? (
+        // Show progress bar if waiting for backend response.
+        <div className="w-1/2">
+          <Progress value={progress} max={120} />
+        </div>
+      )
+      : 
+      (
+      <Tabs defaultValue="predict">
+        <TabsList className="grid w-full grid-cols-3 space-x-2">
+          <TabsTrigger value="predict">Predict</TabsTrigger>
+          <TabsTrigger value="visualize">Visualize</TabsTrigger>
+          <TabsTrigger value="summarize">Summarize</TabsTrigger>
+          {/* <TabsTrigger value="partition-score">Partition Score</TabsTrigger> */}
+        </TabsList>
+        <TabsContent value="predict">
+          <Card className="w-full">
+            <CardHeader className="flex flex-row justify-between">
+              <div className="flex flex-col">
+                <CardTitle>Prediction Function</CardTitle>
+                <CardDescription>This is the prediction tool.</CardDescription>
+              </div>
+              <Dialog>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DialogTrigger asChild>
+                        <Button variant="outline">
+                          <HelpCircle />
+                        </Button>
+                      </DialogTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>How It Works</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <DialogContent className="sm:max-w-[800px]">
+                  <DialogHeader>
+                    <DialogTitle>How It Works</DialogTitle>
+                    <DialogDescription className="flex flex-col space-y-2">
+                      <p>
+                        The Predict Function allows the user to select or upload a file, 
+                        select or enter an alpha value, choose whether or not they want visualization, 
+                        choose number of clusters, and choose whether or not they want summarization.
+                        Upon submission, there will be a loading period where the user will need to wait
+                        for Toden-E to complete its calculations. Then, Toden-E will forward the user to the page corresponding
+                        to the user's desired Toden-E functionality.
+                      </p>
+                      <p className="text-lg font-semibold leading-none tracking-tight dark:text-white">
+                        Example File Format
+                      </p>
+                      <p>
+                        Here is the format of the file needed for the tool to work properly {'(Use .txt files)'}:
+                      </p>
+                      <p>
+                      GO: {'{id}'}
+                      </p>
+                      <p>
+                      GO: {'{id}'}
+                      </p>
+                      <p>
+                      ...
+                      </p>
+                      <p>
+                      GO: {'{id}'}
+                      </p>
+                      <p>
+                        Example of an id: 0006413
+                      </p>
+                      <p>
+                        Visit {'(link goes here)'} to get ids
+                      </p>
+                      <p className="mt-2 text-xs text-gray-500">
+                        A file selection takes precedent over a file upload and an alpha value selection takes precedent over a custom alpha value.
+                      </p>
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button>Continue</Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <Form {...PredictForm}>
+              <form onSubmit={PredictForm.handleSubmit(PredictSubmit)}>
+                <div className="px-4 pb-4 space-y-4">
+                  {/* Row 1: File selection */}
+                  <div className="grid grid-cols-8 gap-4 items-center">
+                    <FormLabel className="col-span-1 text-right">File Selection</FormLabel>
+                    {/* Select input (choose file from dropdown) */}
+                    <div className="col-span-3">
+                      <FormField
+                        control={PredictForm.control}
+                        name="file"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a file..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  <SelectLabel>File</SelectLabel>
+                                  <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
+                                  {/* <SelectItem value="file2">File2</SelectItem>
+                                  <SelectItem value="file3">File3</SelectItem>
+                                  <SelectItem value="file4">File4</SelectItem> */}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                        )}
+                      />
                     </div>
+                    {/* "or" text */}
+                    <div className="col-span-1 text-center">
+                      <span>or</span>
+                    </div>
+                    {/* File upload input */}
+                    <div className="col-span-3">
+                      <FormField
+                        control={PredictForm.control}
+                        name="fileUpload"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Input
+                              key={`predict-file-${predictFileKey}`}
+                              type="file"
+                              onChange={(e) => field.onChange(e.target.files)}
+                              accept=".txt"
+                            />
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                  </div>
 
-                    {/* Row 2: Alpha, Visualize, and Clusters (each spanning 1 column) */}
-                    <div className="grid grid-cols-8 gap-4 items-center">
-                      <FormLabel className="text-right">Alpha</FormLabel>
-                      <div className="col-span-2">
-                        <FormField
-                          control={PredictForm.control}
-                          name="alphaSelect"
-                          render={({ field }) => (
-                            <FormControl>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select Alpha" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectGroup>
-                                    <SelectLabel>Alpha</SelectLabel>
-                                    <SelectItem value="0.25">0.25</SelectItem>
-                                    <SelectItem value="0.5">0.5</SelectItem>
-                                  </SelectGroup>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                          )}
-                        />
-                      </div>
-                      <div className="text-center col-span-1">
-                        <span>or</span>
-                      </div>
-                      <div className="col-span-2">
-                        <FormField
-                          control={PredictForm.control}
-                          name="alphaCustom"
-                          render={({ field }) => (
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Custom Alpha"
-                                onChange={field.onChange}
-                                value={field.value}
-                                min="0"
-                                max="1"
-                                step="0.05"
-                              />
-                            </FormControl>
-                          )}
-                        />
-                      </div>
-                      <div className="text-center col-span-1">
-                        <span>Visualize?</span>
-                      </div>
-                      <div className="col-span-1">
-                        <FormField
-                          control={PredictForm.control}
-                          name="visualize"
-                          render={({ field }) => (
-                            <FormControl>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Yes/No" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectGroup>
-                                    <SelectItem value="yes">Yes</SelectItem>
-                                    <SelectItem value="no">No</SelectItem>
-                                  </SelectGroup>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                          )}
-                        />
-                      </div>
+                  {/* Row 2: Alpha, Visualize, and Clusters (each spanning 1 column) */}
+                  <div className="grid grid-cols-8 gap-4 items-center">
+                    <FormLabel className="text-right">Alpha</FormLabel>
+                    <div className="col-span-2">
+                      <FormField
+                        control={PredictForm.control}
+                        name="alphaSelect"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Alpha" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  <SelectLabel>Alpha</SelectLabel>
+                                  <SelectItem value="0.25">0.25</SelectItem>
+                                  <SelectItem value="0.5">0.5</SelectItem>
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                        )}
+                      />
                     </div>
-                    <div className="grid grid-cols-8 gap-4 items-center">
-                      <FormLabel className="text-right">Clusters</FormLabel>
-                      <div className="col-span-2">
-                        <FormField
-                          control={PredictForm.control}
-                          name="clusters"
-                          render={({ field }) => (
-                            <FormControl>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select Clusters" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectGroup>
-                                    <SelectLabel>Clusters</SelectLabel>
-                                    <SelectItem value="2">2</SelectItem>
-                                    <SelectItem value="3">3</SelectItem>
-                                    <SelectItem value="4">4</SelectItem>
-                                    <SelectItem value="5">5</SelectItem>
-                                  </SelectGroup>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                          )}
-                        />
-                      </div>
-                      <FormLabel className="text-right">Summarize</FormLabel>
-                      <div className="col-span-1">
-                        <FormField
-                          control={PredictForm.control}
-                          name="summarize"
-                          render={({ field }) => (
-                            <FormControl>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Yes/No" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectGroup>
-                                    <SelectItem value="yes">Yes</SelectItem>
-                                    <SelectItem value="no">No</SelectItem>
-                                  </SelectGroup>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                          )}
-                        />
-                      </div>
+                    <div className="text-center col-span-1">
+                      <span>or</span>
+                    </div>
+                    <div className="col-span-2">
+                      <FormField
+                        control={PredictForm.control}
+                        name="alphaCustom"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Custom Alpha"
+                              onChange={field.onChange}
+                              value={field.value}
+                              min="0"
+                              max="1"
+                              step="0.05"
+                            />
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                    <div className="text-center col-span-1">
+                      <span>Visualize?</span>
+                    </div>
+                    <div className="col-span-1">
+                      <FormField
+                        control={PredictForm.control}
+                        name="visualize"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Yes/No" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  <SelectItem value="yes">Yes</SelectItem>
+                                  <SelectItem value="no">No</SelectItem>
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                        )}
+                      />
                     </div>
                   </div>
-                  <CardFooter className="space-x-4">
-                    <Button 
-                      variant="destructive" 
-                      onClick={() =>{
-                        PredictForm.reset();
-                        setPredictFileKey(prev => prev + 1);
-                      }}
-                    >
-                      Reset
-                    </Button>
-                    <Button type="submit" disabled={!PredictForm.formState.isValid}>
-                      Submit
-                    </Button>
-                  </CardFooter>
-                </form>
-              </Form>
-            </Card>
-          </TabsContent>
-          <TabsContent value="visualize">
-            <Card className="w-[1000px]">
-            <CardHeader className="flex flex-row justify-between">
-                <div className="flex flex-col">
-                  <CardTitle>Visualize Function</CardTitle>
-                  <CardDescription>This will visualize results.</CardDescription>
-                </div>
-                <Dialog>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DialogTrigger asChild>
-                          <Button variant="outline">
-                            <HelpCircle />
-                          </Button>
-                        </DialogTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>How It Works</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    </TooltipProvider>
-                  <DialogContent className="sm:max-w-[800px]">
-                    <DialogHeader>
-                      <DialogTitle>How It Works</DialogTitle>
-                      <DialogDescription className="flex flex-col space-y-2">
-                        <p>
-                          The Summarize Function allows the user to select or upload a file for summarization.
-                          Upon submission, there will be a loading period where the user will need to wait
-                          for Toden-E to complete its summarization. Then, Toden-E will forward the user to the page corresponding
-                          to the user's desired Toden-E functionality.
-                        </p>
-                        <p className="text-lg font-semibold leading-none tracking-tight dark:text-white">
-                          Example File Format
-                        </p>
-                        <p>
-                          Here is the format of the file to visualize n clusters {'(Use .csv files curated by Toden-E Predict)'}:
-                        </p>
-                        <p>
-                        ID,0,..., n - 1
-                        </p>
-                        <p>
-                        {'{Clustering Algorithm}'}, {'{Cluster_1_IDs}'}, ..., {'{Cluster_(n - 1)_IDs}'}
-                        </p>
-                        <p className="mt-2 text-xs text-gray-500">
-                          A file selection takes precedent over a file upload.
-                        </p>
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button>Continue</Button>
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <Form {...VisualizeForm}>
-                <form onSubmit={VisualizeForm.handleSubmit(VisualizeSubmit)}>
-                  <div className="px-4 pb-4 space-y-4">
-                    {/* File Selection Row */}
-                    <div className="grid grid-cols-8 gap-4 items-center">
-                      <FormLabel className="col-span-1 text-right">
-                        File Selection
-                      </FormLabel>
-                      {/* Select input for file choice */}
-                      <div className="col-span-3">
-                        <FormField
-                          control={VisualizeForm.control}
-                          name="file"
-                          render={({ field }) => (
-                            <FormControl>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a file..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectGroup>
-                                    <SelectLabel>File</SelectLabel>
-                                    <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
-                                    {/* <SelectItem value="file2">File2</SelectItem>
-                                    <SelectItem value="file3">File3</SelectItem>
-                                    <SelectItem value="file4">File4</SelectItem> */}
-                                  </SelectGroup>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                          )}
-                        />
-                      </div>
-                      {/* "or" text */}
-                      <div className="col-span-1 text-center">
-                        <span>or</span>
-                      </div>
-                      {/* File upload input */}
-                      <div className="col-span-3">
-                        <FormField
-                          control={VisualizeForm.control}
-                          name="fileUpload"
-                          render={({ field }) => (
-                            <FormControl>
-                              <Input
-                                key={`visualize-file-${visualizeFileKey}`}
-                                type="file"
-                                onChange={(e) => field.onChange(e.target.files)}
-                                accept=".csv"
-                              />
-                            </FormControl>
-                          )}
-                        />
-                      </div>
+                  <div className="grid grid-cols-8 gap-4 items-center">
+                    <FormLabel className="text-right">Clusters</FormLabel>
+                    <div className="col-span-2">
+                      <FormField
+                        control={PredictForm.control}
+                        name="clusters"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Clusters" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  <SelectLabel>Clusters</SelectLabel>
+                                  <SelectItem value="2">2</SelectItem>
+                                  <SelectItem value="3">3</SelectItem>
+                                  <SelectItem value="4">4</SelectItem>
+                                  <SelectItem value="5">5</SelectItem>
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                    <FormLabel className="text-right">Summarize</FormLabel>
+                    <div className="col-span-1">
+                      <FormField
+                        control={PredictForm.control}
+                        name="summarize"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Yes/No" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  <SelectItem value="yes">Yes</SelectItem>
+                                  <SelectItem value="no">No</SelectItem>
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                        )}
+                      />
                     </div>
                   </div>
-                  <CardFooter className="flex space-x-4">
-                    <Button 
-                      variant="destructive" 
-                      onClick={() => {
-                        VisualizeForm.reset();
-                        setVisualizeFileKey(prev => prev + 1);
-                      }}
-                    >
-                      Reset
-                    </Button>
-                    <Button type="submit" disabled={!VisualizeForm.formState.isValid}>
-                      Submit
-                    </Button>
-                  </CardFooter>
-                </form>
-              </Form>
-            </Card>
-          </TabsContent>
-          <TabsContent value="summarize">
-            <Card className="w-[1000px]">
-            <CardHeader className="flex flex-row justify-between">
-                <div className="flex flex-col">
-                  <CardTitle>Summarize Function</CardTitle>
-                  <CardDescription>This will summarize results.</CardDescription>
                 </div>
-                <Dialog>
+                <CardFooter className="space-x-4">
+                  <Button 
+                    variant="destructive" 
+                    onClick={() =>{
+                      PredictForm.reset();
+                      setPredictFileKey(prev => prev + 1);
+                    }}
+                  >
+                    Reset
+                  </Button>
+                  <Button type="submit" disabled={!PredictForm.formState.isValid}>
+                    Submit
+                  </Button>
+                </CardFooter>
+              </form>
+            </Form>
+          </Card>
+        </TabsContent>
+        <TabsContent value="visualize">
+          <Card className="w-[1000px]">
+          <CardHeader className="flex flex-row justify-between">
+              <div className="flex flex-col">
+                <CardTitle>Visualize Function</CardTitle>
+                <CardDescription>This will visualize results.</CardDescription>
+              </div>
+              <Dialog>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -710,137 +579,263 @@ export default function FunctionTabs({ setClustersData, setView, setSelectedNode
                     </TooltipContent>
                   </Tooltip>
                   </TooltipProvider>
-                  <DialogContent className="sm:max-w-[800px]">
-                    <DialogHeader>
-                      <DialogTitle>How It Works</DialogTitle>
-                      <DialogDescription className="flex flex-col space-y-2">
-                        <p>
-                          The Summarize Function allows the user to select or upload a file for summarization.
-                          Upon submission, there will be a loading period where the user will need to wait
-                          for Toden-E to complete its summarization. Then, Toden-E will forward the user to the page corresponding
-                          to the user's desired Toden-E functionality.
-                        </p>
-                        <p className="text-lg font-semibold leading-none tracking-tight dark:text-white">
-                          Example File Format
-                        </p>
-                        <p>
-                          Here is the format of the file to summarize n clusters {'(Use .csv files curated by Toden-E Predict)'}:
-                        </p>
-                        <p>
-                        ID,0,..., n - 1
-                        </p>
-                        <p>
-                        {'{Clustering Algorithm}'}, {'{Cluster_1_IDs}'}, ..., {'{Cluster_(n - 1)_IDs}'}
-                        </p>
-                        <p className="mt-2 text-xs text-gray-500">
-                          A file selection takes precedent over a file upload.
-                        </p>
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button>Continue</Button>
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <Form {...SummarizeForm}>
-                <form onSubmit={SummarizeForm.handleSubmit(SummarizeSubmit)}>
-                  <div className="px-4 pb-4 space-y-4">
-                    {/* File Selection Row */}
-                    <div className="grid grid-cols-8 gap-4 items-center">
-                      <FormLabel className="col-span-1 text-right">
-                        File Selection
-                      </FormLabel>
-                      {/* Select input for file choice */}
-                      <div className="col-span-3">
-                        <FormField
-                          control={SummarizeForm.control}
-                          name="file"
-                          render={({ field }) => (
-                            <FormControl>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a file..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectGroup>
-                                    <SelectLabel>File</SelectLabel>
-                                    <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
-                                    {/* <SelectItem value="file2">File2</SelectItem>
-                                    <SelectItem value="file3">File3</SelectItem>
-                                    <SelectItem value="file4">File4</SelectItem> */}
-                                  </SelectGroup>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                          )}
-                        />
-                      </div>
-                      {/* "or" text */}
-                      <div className="col-span-1 text-center">
-                        <span>or</span>
-                      </div>
-                      {/* File upload input */}
-                      <div className="col-span-3">
-                        <FormField
-                          control={SummarizeForm.control}
-                          name="fileUpload"
-                          render={({ field }) => (
-                            <FormControl>
-                              <Input
-                                key={`summarize-file-${summarizeFileKey}`}
-                                type="file"
-                                onChange={(e) => field.onChange(e.target.files)}
-                                accept=".csv"
-                              />
-                            </FormControl>
-                          )}
-                        />
-                      </div>
+                <DialogContent className="sm:max-w-[800px]">
+                  <DialogHeader>
+                    <DialogTitle>How It Works</DialogTitle>
+                    <DialogDescription className="flex flex-col space-y-2">
+                      <p>
+                        The Summarize Function allows the user to select or upload a file for summarization.
+                        Upon submission, there will be a loading period where the user will need to wait
+                        for Toden-E to complete its summarization. Then, Toden-E will forward the user to the page corresponding
+                        to the user's desired Toden-E functionality.
+                      </p>
+                      <p className="text-lg font-semibold leading-none tracking-tight dark:text-white">
+                        Example File Format
+                      </p>
+                      <p>
+                        Here is the format of the file to visualize n clusters {'(Use .csv files curated by Toden-E Predict)'}:
+                      </p>
+                      <p>
+                      ID,0,..., n - 1
+                      </p>
+                      <p>
+                      {'{Clustering Algorithm}'}, {'{Cluster_1_IDs}'}, ..., {'{Cluster_(n - 1)_IDs}'}
+                      </p>
+                      <p className="mt-2 text-xs text-gray-500">
+                        A file selection takes precedent over a file upload.
+                      </p>
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button>Continue</Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <Form {...VisualizeForm}>
+              <form onSubmit={VisualizeForm.handleSubmit(VisualizeSubmit)}>
+                <div className="px-4 pb-4 space-y-4">
+                  {/* File Selection Row */}
+                  <div className="grid grid-cols-8 gap-4 items-center">
+                    <FormLabel className="col-span-1 text-right">
+                      File Selection
+                    </FormLabel>
+                    {/* Select input for file choice */}
+                    <div className="col-span-3">
+                      <FormField
+                        control={VisualizeForm.control}
+                        name="file"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a file..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  <SelectLabel>File</SelectLabel>
+                                  <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
+                                  {/* <SelectItem value="file2">File2</SelectItem>
+                                  <SelectItem value="file3">File3</SelectItem>
+                                  <SelectItem value="file4">File4</SelectItem> */}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                    {/* "or" text */}
+                    <div className="col-span-1 text-center">
+                      <span>or</span>
+                    </div>
+                    {/* File upload input */}
+                    <div className="col-span-3">
+                      <FormField
+                        control={VisualizeForm.control}
+                        name="fileUpload"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Input
+                              key={`visualize-file-${visualizeFileKey}`}
+                              type="file"
+                              onChange={(e) => field.onChange(e.target.files)}
+                              accept=".csv"
+                            />
+                          </FormControl>
+                        )}
+                      />
                     </div>
                   </div>
-                  <CardFooter className="flex space-x-4">
-                    <Button 
-                      variant="destructive" 
-                      onClick={() => {
-                        SummarizeForm.reset();
-                        setSummarizeFileKey(prev => prev + 1);
-                      }}
-                    >
-                      Reset
-                    </Button>
-                    <Button type="submit" disabled={!SummarizeForm.formState.isValid}>
-                      Submit
-                    </Button>
-                  </CardFooter>
-                </form>
-              </Form>
-            </Card>
-          </TabsContent>
-        {/* <TabsContent value="partition-score">
-          Im sorry, not available.
-        </TabsContent> */}
-      </Tabs>
-       )}
-       <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>There was an error in fulfilling your request. Please try again.</AlertDialogTitle>
-            <AlertDialogDescription>
-              If this problem persists, please contact us at: xyz1234@auburn.edu. PLEASE NOTE: The file upload feature for each function of Toden-E will not work currently.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction>Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      </div>
-  );
+                </div>
+                <CardFooter className="flex space-x-4">
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => {
+                      VisualizeForm.reset();
+                      setVisualizeFileKey(prev => prev + 1);
+                    }}
+                  >
+                    Reset
+                  </Button>
+                  <Button type="submit" disabled={!VisualizeForm.formState.isValid}>
+                    Submit
+                  </Button>
+                </CardFooter>
+              </form>
+            </Form>
+          </Card>
+        </TabsContent>
+        <TabsContent value="summarize">
+          <Card className="w-[1000px]">
+          <CardHeader className="flex flex-row justify-between">
+              <div className="flex flex-col">
+                <CardTitle>Summarize Function</CardTitle>
+                <CardDescription>This will summarize results.</CardDescription>
+              </div>
+              <Dialog>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DialogTrigger asChild>
+                      <Button variant="outline">
+                        <HelpCircle />
+                      </Button>
+                    </DialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>How It Works</p>
+                  </TooltipContent>
+                </Tooltip>
+                </TooltipProvider>
+                <DialogContent className="sm:max-w-[800px]">
+                  <DialogHeader>
+                    <DialogTitle>How It Works</DialogTitle>
+                    <DialogDescription className="flex flex-col space-y-2">
+                      <p>
+                        The Summarize Function allows the user to select or upload a file for summarization.
+                        Upon submission, there will be a loading period where the user will need to wait
+                        for Toden-E to complete its summarization. Then, Toden-E will forward the user to the page corresponding
+                        to the user's desired Toden-E functionality.
+                      </p>
+                      <p className="text-lg font-semibold leading-none tracking-tight dark:text-white">
+                        Example File Format
+                      </p>
+                      <p>
+                        Here is the format of the file to summarize n clusters {'(Use .csv files curated by Toden-E Predict)'}:
+                      </p>
+                      <p>
+                      ID,0,..., n - 1
+                      </p>
+                      <p>
+                      {'{Clustering Algorithm}'}, {'{Cluster_1_IDs}'}, ..., {'{Cluster_(n - 1)_IDs}'}
+                      </p>
+                      <p className="mt-2 text-xs text-gray-500">
+                        A file selection takes precedent over a file upload.
+                      </p>
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button>Continue</Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <Form {...SummarizeForm}>
+              <form onSubmit={SummarizeForm.handleSubmit(SummarizeSubmit)}>
+                <div className="px-4 pb-4 space-y-4">
+                  {/* File Selection Row */}
+                  <div className="grid grid-cols-8 gap-4 items-center">
+                    <FormLabel className="col-span-1 text-right">
+                      File Selection
+                    </FormLabel>
+                    {/* Select input for file choice */}
+                    <div className="col-span-3">
+                      <FormField
+                        control={SummarizeForm.control}
+                        name="file"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a file..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  <SelectLabel>File</SelectLabel>
+                                  <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                    {/* "or" text */}
+                    <div className="col-span-1 text-center">
+                      <span>or</span>
+                    </div>
+                    {/* File upload input */}
+                    <div className="col-span-3">
+                      <FormField
+                        control={SummarizeForm.control}
+                        name="fileUpload"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Input
+                              key={`summarize-file-${summarizeFileKey}`}
+                              type="file"
+                              onChange={(e) => field.onChange(e.target.files)}
+                              accept=".csv"
+                            />
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <CardFooter className="flex space-x-4">
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => {
+                      SummarizeForm.reset();
+                      setSummarizeFileKey(prev => prev + 1);
+                    }}
+                  >
+                    Reset
+                  </Button>
+                  <Button type="submit" disabled={!SummarizeForm.formState.isValid}>
+                    Submit
+                  </Button>
+                </CardFooter>
+              </form>
+            </Form>
+          </Card>
+        </TabsContent>
+    </Tabs>
+     )}
+     
+     <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>There was an error in fulfilling your request. Please try again.</AlertDialogTitle>
+          <AlertDialogDescription>
+            If this problem persists, please contact us at: xyz1234@auburn.edu. PLEASE NOTE: The file upload feature for each function of Toden-E will not work currently.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction>Continue</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </div>
+);
 }
