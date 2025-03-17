@@ -12,6 +12,14 @@ import Navbar from '@/components/Navbar';
 import DynamicGraph from "@/components/DynamicGraph";
 import AppSidebar from "@/components/AppSidebar";
 
+// interface Edge {
+//   from: string;
+//   to: string;
+//   similarity: string;
+//   x: number;
+//   y: number;
+// }
+
 // Function for Home Page.
 // 3 Main Components: Dynamic Graph, Function Tabs, Node Combobox
 
@@ -21,7 +29,34 @@ export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [selectedFunction, setSelectedFunction] = useState<string>("toden-e");
+  // const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [view, setView] = useState<string>("graph");
+  // const [edgesForSelectedNode, setEdgesForSelectedNode] = useState<Edge[]>([]);
+
+  async function handleFileSelect(file: string) {
+    const formData = new FormData();
+    setSelectedFile(file);
+
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/create-m-type-data', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.json();
+      setSelectedNode(result.selectedNode);
+      setClustersData({ clusters: result.allowedNodes });
+      setView("graph");
+    } catch (error) {
+      console.error('Error submitting visualize form:', error);
+    }
+  };
+
+  // const handleEdgesUpdate = (edges: Edge[]) => {
+  //   setSelectedEdge(null);
+  //   setEdgesForSelectedNode(edges);
+  // };
 
   const nodesArray = useMemo(() => {
     if (!clustersData) return [];
@@ -69,6 +104,13 @@ export default function HomePage() {
                               setSelectedNode={setSelectedNode} 
                               selectedFunction={selectedFunction}
                               setSelectedFunction={setSelectedFunction}
+                              setSelectedFile={setSelectedFile}
+                              selectedFile={selectedFile}
+                              onFileSelect={handleFileSelect}
+                              selectedNode={selectedNode}
+                              // selectedEdge={selectedEdge}
+                              // setSelectedEdge={setSelectedEdge}
+                              // edgesForSelectedNode={edgesForSelectedNode}
                             />
             }
             <DynamicGraph 
@@ -78,6 +120,8 @@ export default function HomePage() {
               setSidebarOpen={setSidebarOpen}
               setView={setView}
               selectedFunction={selectedFunction}
+              setSelectedNode={setSelectedNode}
+              // setSelectedEdge={setSelectedEdge}
             />
           </>
         )}

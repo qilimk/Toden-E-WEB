@@ -18,31 +18,31 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-interface Node {
-  value: string;
-  label: string;
+interface Edge {
+  from: string;
+  to: string;
+  similarity: string;
+  x: number;
+  y: number;
 }
 
-interface NodeComboboxProps {
-  nodes: Node[];
-  onSelect?: (value: string) => void;
-  selectedNode: string;
+interface EdgeComboboxProps {
+  edges: Edge[];
+  onSelect?: (edge: Edge) => void;
+  selectedEdge: Edge | null;
 }
 
-export const NodeCombobox: React.FC<NodeComboboxProps> = ({ nodes, onSelect, selectedNode }) => {
+export const EdgeCombobox: React.FC<EdgeComboboxProps> = ({ edges, onSelect, selectedEdge }) => {
   const [open, setOpen] = React.useState(false);
-  const [buttonWidth, setButtonWidth] = React.useState<number>(0);
-  const buttonRef = React.useRef<HTMLButtonElement>(null);
 
-  React.useEffect(() => {
-    if (buttonRef.current) {
-      setButtonWidth(buttonRef.current.offsetWidth);
-    }
-  }, [open, selectedNode]);
-
-  const handleSelect = (selectedValue: string) => {
+  // Called when a user selects an edge from the combobox
+  const handleSelect = (selectedEdgeValue: string) => {
+    // Look up the edge by a unique property – here we use the "to" field (assuming it’s unique)
+    const edge = edges.find((edge) => edge.to === selectedEdgeValue);
     setOpen(false);
-    if (onSelect) onSelect(selectedValue);
+    if (edge && onSelect) {
+      onSelect(edge);
+    }
   };
 
   // Workaround: cast command components to any so that they accept children
@@ -56,36 +56,30 @@ export const NodeCombobox: React.FC<NodeComboboxProps> = ({ nodes, onSelect, sel
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          ref={buttonRef}
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className=""
-        >
-          {selectedNode
-            ? nodes.find((node) => node.value === selectedNode)?.label
-            : "Select node..."}
+        <Button variant="outline" role="combobox" aria-expanded={open}>
+          {selectedEdge
+            ? `${selectedEdge.to} ${parseFloat(selectedEdge.similarity).toFixed(3)}`
+            : "Select edge..."}
           <ChevronsUpDown className="opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-0" style={{ width: buttonWidth }}>
+      <PopoverContent className="p-0">
         <CommandAny>
-          <CommandInputAny className="h-9" />
+          <CommandInputAny className="h-9" placeholder="Search edges..." />
           <CommandListAny>
-            <CommandEmptyAny>No node found.</CommandEmptyAny>
+            <CommandEmptyAny>No edge found.</CommandEmptyAny>
             <CommandGroupAny>
-              {nodes.map((node) => (
+              {edges.map((edge) => (
                 <CommandItemAny
-                  key={node.value}
-                  value={node.value}
+                  key={edge.to} // assume "to" is unique per edge
+                  value={edge.to}
                   onSelect={handleSelect}
                 >
-                  {node.label}
+                  {`To: ${edge.to} (Sim: ${edge.similarity})`}
                   <Check
                     className={cn(
                       "ml-auto",
-                      selectedNode === node.value ? "opacity-100" : "opacity-0"
+                      selectedEdge?.to === edge.to ? "opacity-100" : "opacity-0"
                     )}
                   />
                 </CommandItemAny>
