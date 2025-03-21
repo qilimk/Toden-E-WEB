@@ -11,14 +11,9 @@ import FunctionTabs from "@/components/FunctionTabs";
 import Navbar from '@/components/Navbar';
 import DynamicGraph from "@/components/DynamicGraph";
 import AppSidebar from "@/components/AppSidebar";
+import MatrixVisualization from "@/components/MatrixVisualization";
 
-// interface Edge {
-//   from: string;
-//   to: string;
-//   similarity: string;
-//   x: number;
-//   y: number;
-// }
+import { Edge } from "@/types/edge";
 
 // Function for Home Page.
 // 3 Main Components: Dynamic Graph, Function Tabs, Node Combobox
@@ -29,9 +24,8 @@ export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [selectedFunction, setSelectedFunction] = useState<string>("toden-e");
-  // const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [view, setView] = useState<string>("graph");
-  // const [edgesForSelectedNode, setEdgesForSelectedNode] = useState<Edge[]>([]);
 
   async function handleFileSelect(file: string) {
     const formData = new FormData();
@@ -52,11 +46,6 @@ export default function HomePage() {
       console.error('Error submitting visualize form:', error);
     }
   };
-
-  // const handleEdgesUpdate = (edges: Edge[]) => {
-  //   setSelectedEdge(null);
-  //   setEdgesForSelectedNode(edges);
-  // };
 
   const nodesArray = useMemo(() => {
     if (!clustersData) return [];
@@ -97,7 +86,7 @@ export default function HomePage() {
               setView={setView}
             />
           </>
-        ) : (
+        ) : view == "graph" ? (
           <>
             {sidebarOpen && <AppSidebar 
                               nodes={nodesArray} 
@@ -108,9 +97,10 @@ export default function HomePage() {
                               selectedFile={selectedFile}
                               onFileSelect={handleFileSelect}
                               selectedNode={selectedNode}
-                              // selectedEdge={selectedEdge}
-                              // setSelectedEdge={setSelectedEdge}
-                              // edgesForSelectedNode={edgesForSelectedNode}
+                              setView={setView}
+                              view={view}
+                              selectedEdge={selectedEdge}
+                              setSelectedEdge={setSelectedEdge}
                             />
             }
             <DynamicGraph 
@@ -124,7 +114,29 @@ export default function HomePage() {
               // setSelectedEdge={setSelectedEdge}
             />
           </>
-        )}
+        ) : view === "matrix" ? (
+          <>
+            {sidebarOpen && <AppSidebar 
+                              nodes={nodesArray} 
+                              setSelectedNode={setSelectedNode} 
+                              selectedFunction={selectedFunction}
+                              setSelectedFunction={setSelectedFunction}
+                              setSelectedFile={setSelectedFile}
+                              selectedFile={selectedFile}
+                              onFileSelect={handleFileSelect}
+                              selectedNode={selectedNode}
+                              setView={setView}
+                              view={view}
+                              selectedEdge={selectedEdge}
+                              setSelectedEdge={setSelectedEdge}
+                            />
+            }
+            <MatrixVisualization 
+              setSidebarOpen={setSidebarOpen}
+              setView={setView}
+            />
+          </>
+        ) : (null)}
       </div>
     </div>
   );

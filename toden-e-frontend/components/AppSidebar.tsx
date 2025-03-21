@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Tabs,
   TabsContent,
@@ -37,14 +37,9 @@ import {
   } from "@/components/ui/table";
 import { NodeCombobox } from "@/components/NodeCombobox";
 import { EdgeCombobox } from "@/components/EdgeCombobox";
+import { ScrollArea } from "@/components/ui/scroll-area"
 
-interface Edge {
-  from: string;
-  to: string;
-  similarity: string;
-  x: number;
-  y: number;
-}
+import { Edge } from "@/types/edge";
 
 interface AppSidebarProps {
   nodes: { value: string; label: string }[];
@@ -55,9 +50,10 @@ interface AppSidebarProps {
   selectedFile: string;
   onFileSelect: (file: string) => void;
   selectedNode: string;
-  // selectedEdge: Edge | null;
-  // setSelectedEdge: (edge: Edge) => void;
-  // edgesForSelectedNode: Edge[];
+  setView: (view: string) => void;
+  view: string;
+  selectedEdge: Edge | null;
+  setSelectedEdge: (edge: Edge) => void;
 }
 
 export default function AppSidebar({ 
@@ -69,20 +65,46 @@ export default function AppSidebar({
     selectedFile, 
     onFileSelect,
     selectedNode,
-    // selectedEdge,
-    // setSelectedEdge,
-    // edgesForSelectedNode
+    setView,
+    view,
+    selectedEdge,
+    setSelectedEdge,
   }: AppSidebarProps) {
+
+  const [edges, setEdges] = useState<Edge[]>([]);
+
+  useEffect(() => {
+    if (selectedNode && selectedFile) {
+      fetch("/api/get-edge-information", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedNode, selectedFile }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          // Ensure data.edges is an array; if similarity is not a number already, convert it here.
+          const fetchedEdges = data.edges?.map((edge: any) => ({
+            ...edge,
+            similarity: Number(edge.similarity),
+          }));
+          setEdges(fetchedEdges || []);
+        })
+        .catch((err) => {
+          console.error("Error fetching edge data: ", err);
+          setEdges([]);
+        });
+    }
+  }, [selectedNode, selectedFile]);
 
   return (
     <div className="flex flex-row h-full">
       <div className="px-2 py-2">
-        <Tabs defaultValue="graphing">
+        <Tabs defaultValue={view} onValueChange={setView}>
           <TabsList className="grid grid-cols-2">
-            <TabsTrigger value="graphing">Graphing</TabsTrigger>
-            <TabsTrigger value="embedding">Matrix</TabsTrigger>
+            <TabsTrigger value="graph">Graphing</TabsTrigger>
+            <TabsTrigger value="matrix">Matrix</TabsTrigger>
           </TabsList>
-          <TabsContent value="graphing" className="space-y-2">
+          <TabsContent value="graph" className="space-y-2">
             <Card>
               <CardHeader>
                 <CardTitle>Clustering</CardTitle>
@@ -153,29 +175,19 @@ export default function AppSidebar({
                       <div className="col-span-2">
                         <NodeCombobox 
                           nodes={nodes} 
-                          onSelect={setSelectedNode} 
+                          onSelect={setSelectedNode}
                           selectedNode={selectedNode}
                         />
                       </div>
                       <Label className="col-span-1">Choose Edge</Label>
                       <div className="col-span-2">
-                      {/* <EdgeCombobox
-                        edges={edgesForSelectedNode}
+                      <EdgeCombobox
+                        edges={edges}
                         onSelect={setSelectedEdge}
                         selectedEdge={selectedEdge}
-                      /> */}
+                      />
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>
-                      Selected Node Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {selectedNode}
                   </CardContent>
                 </Card>
                 <Card>
@@ -185,32 +197,76 @@ export default function AppSidebar({
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {/* <div className="grid grid-cols-3 gap-2">
-                      <p className="col-span-1">
-                        From:
-                      </p>  
-                      <div className="col-span-2">
-                        {selectedNode}
-                      </div>
-                      <p className="col-span-1">
-                        To:
-                      </p>
-                      <div className="col-span-2">
-                        {selectedEdge.to}
-                      </div>
-                      <p className="col-span-1">
-                        Similarity:
-                      </p>
-                      <div className="col-span-2">
-                        {parseFloat(selectedEdge.similarity).toFixed(4)}
-                      </div>
-                    </div> */}
+                  {selectedEdge ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      <p className="col-span-1">From:</p>  
+                      <div className="col-span-2">{selectedNode}</div>
+                      <p className="col-span-1">To:</p>
+                      <div className="col-span-2">{selectedEdge.to}</div>
+                      <p className="col-span-1">Similarity:</p>
+                      <div className="col-span-2">{selectedEdge.similarity.toFixed(4)}</div>
+                    </div>
+                  ) : (
+                    <p>No edge selected</p>
+                  )}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      {selectedNode} Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                  <ScrollArea className="h-64">
+                  <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Node</TableHead>
+                          <TableHead>Similarity</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                        {edges && edges.length > 0 ? (
+                          edges.map((edge, index) => (
+                            <TableBody>
+                            <TableRow 
+                              key={index}
+                              onClick={() => setSelectedEdge(edge)}
+                              className="cursor-pointer hover:bg-muted"
+                            >
+                              <TableCell>{edge.to}</TableCell>
+                              <TableCell>
+                                {edge.similarity.toFixed(4)}
+                              </TableCell>
+                            </TableRow>
+                            </TableBody>
+                          ))
+                        ) : (
+                          <TableCaption>No edges found.</TableCaption>
+                        )}
+                    </Table>
+                    </ScrollArea>
                   </CardContent>
                 </Card>
               </>
             ) : (
               null
             )}
+          </TabsContent>
+          <TabsContent value="matrix">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  Testing
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-2">
+                  <Label className="col-span-1">Dimensions</Label>
+                  <p className="col-span-2">Put Dimensions here</p>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

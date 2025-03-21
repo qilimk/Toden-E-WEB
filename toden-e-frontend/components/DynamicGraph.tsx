@@ -291,7 +291,7 @@ export default function DynamicGraph({
           No graph data available
         </div>
       )}
-      <div className="flex absolute top-4 left-4 z-10 items-center">
+      <div className="flex absolute top-4 left-4 z-10 items-center space-x-1">
         <Button
           // @ts-ignore
             onClick={() => setSidebarOpen((prev: boolean) => !prev)}
@@ -313,6 +313,11 @@ export default function DynamicGraph({
         >
         {drawerOpen ? <ChevronDown /> : <ChevronUp />}
       </Button>
+      {clustersData && selectedFunction === "toden-e" && (
+        <div className="absolute top-4 left-1/2 z-20 transform -translate-x-1/2 text-white text-2xl font-bold">
+          <p>Algorithm: {todenEData?.algorithm}</p>
+        </div>
+      )}
       {/* Transformed Container: Background and Graph Content Scale Together */}
       <div
         style={{
@@ -407,10 +412,6 @@ export default function DynamicGraph({
             </>
           ) : selectedFunction === "toden-e" ? (
             <>
-              {/* Render the algorithm name at the top center */}
-              <div className="absolute top-4 left-1/2 z-20 transform -translate-x-1/2 text-white text-2xl font-bold">
-                {todenEData?.algorithm || "Unknown Algorithm"}
-              </div>
               {(() => {
                 const clusters = todenEData?.clusters || [];
                 const numClusters = clusters.length;
@@ -488,7 +489,8 @@ export default function DynamicGraph({
                         className="absolute"
                         style={{ left: clusterCenter.x, top: clusterCenter.y }}
                       >
-                        {ringNodes.map((node, nodeIndex) => {
+                        {// @ts-ignore
+                        ringNodes.map((node, nodeIndex) => {
                           const angle = (2 * Math.PI * nodeIndex) / nodesInThisRing;
                           const randomOffset = Math.random() * 35;
                           const nodeX = (ring.radius + randomOffset) * Math.cos(angle);

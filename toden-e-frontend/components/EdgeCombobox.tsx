@@ -18,13 +18,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-interface Edge {
-  from: string;
-  to: string;
-  similarity: string;
-  x: number;
-  y: number;
-}
+import { Edge } from "@/types/edge";
 
 interface EdgeComboboxProps {
   edges: Edge[];
@@ -34,6 +28,14 @@ interface EdgeComboboxProps {
 
 export const EdgeCombobox: React.FC<EdgeComboboxProps> = ({ edges, onSelect, selectedEdge }) => {
   const [open, setOpen] = React.useState(false);
+  const [buttonWidth, setButtonWidth] = React.useState<number>(0);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useLayoutEffect(() => {
+    if (buttonRef.current) {
+      setButtonWidth(buttonRef.current.offsetWidth);
+    }
+  }, [open, selectedEdge]);
 
   // Called when a user selects an edge from the combobox
   const handleSelect = (selectedEdgeValue: string) => {
@@ -56,14 +58,19 @@ export const EdgeCombobox: React.FC<EdgeComboboxProps> = ({ edges, onSelect, sel
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" aria-expanded={open}>
+        <Button 
+          variant="outline" 
+          role="combobox" 
+          aria-expanded={open} 
+          ref={buttonRef}
+        >
           {selectedEdge
-            ? `${selectedEdge.to} ${parseFloat(selectedEdge.similarity).toFixed(3)}`
+            ? `${selectedEdge.to}`
             : "Select edge..."}
           <ChevronsUpDown className="opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-0">
+      <PopoverContent className="p-0" style={{ width: buttonWidth }}>
         <CommandAny>
           <CommandInputAny className="h-9" placeholder="Search edges..." />
           <CommandListAny>
@@ -75,7 +82,7 @@ export const EdgeCombobox: React.FC<EdgeComboboxProps> = ({ edges, onSelect, sel
                   value={edge.to}
                   onSelect={handleSelect}
                 >
-                  {`To: ${edge.to} (Sim: ${edge.similarity})`}
+                  {`${edge.to}`}
                   <Check
                     className={cn(
                       "ml-auto",
