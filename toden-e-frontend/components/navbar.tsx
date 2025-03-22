@@ -27,25 +27,15 @@ const Navbar = () => {
   }, []);
 
   return (
-    <div className="z-50 !bg-background shadow-md dark:outline dark:outline-1 dark:outline-offset-0 dark:outline-border">
-      <div className="flex h-14 items-center justify-between px-4">
-        <div>
-          <Link href="/home" passHref>
-            <div className="flex items-center">
-              <Image
-                src={'globe.svg'}
-                width={50}
-                height={50}
-                className="mr-3"
-                alt="Logo"
-                priority
-              />
-              <span className="text-md whitespace-nowrap font-semibold dark:text-white sm:text-2xl">
-                Toden-E
-              </span>
-            </div>
-          </Link>
-        </div>
+    <div>
+      <div className="flex items-center justify-between px-4 py-2">
+        <Link href="/home" passHref>
+          <div className="flex items-center">
+            <span className="text-md whitespace-nowrap font-semibold dark:text-white sm:text-2xl">
+              Toden-E
+            </span>
+          </div>
+        </Link>
         
         <div className="space-x-12">
           <Link href="/home" passHref>

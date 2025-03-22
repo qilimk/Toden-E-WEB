@@ -9,14 +9,22 @@ import { Button } from "@/components/ui/button";
 
 interface SummaryDrawerProps {
     setDrawerOpen: (open: boolean) => void;
+    selectedFunction: string;
 }
 
-export default function SummaryDrawer ({ setDrawerOpen }: SummaryDrawerProps) {
+export default function SummaryDrawer ({ 
+        setDrawerOpen,
+        selectedFunction, 
+    }: SummaryDrawerProps) {
     return (
         <div className="flex flex-col p-2 space-y-2">
-            <p>
-                Summary Drawer
-            </p>
+            {selectedFunction === "CoCo" ? (
+                <p className="text-center">
+                    No Summarization for CoCo.
+                </p>
+            ) : selectedFunction === "toden-e" ? (
+                <p>Testing</p>
+            ) : (null)}
         </div>
     );
 }

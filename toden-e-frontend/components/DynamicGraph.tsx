@@ -10,15 +10,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import SummaryDrawer from "@/components/SummaryDrawer";
-
-interface Edge {
-  from: string;
-  to: string;
-  similarity: string;
-  x: number;
-  y: number;
-}
+import { Edge } from "@/types/edge";
 
 
 interface DynamicGraphProps {
@@ -29,8 +21,12 @@ interface DynamicGraphProps {
   setView: (view: string) => void;
   selectedFunction: string;
   setSelectedNode: (view: string) => void;
-  // setSelectedEdge: (edge: Edge) => void;
-  // onEdgesUpdate?: (edges: Edge[]) => void;
+  setSelectedEdge: (edge: Edge) => void;
+  selectedEdge: Edge | null;
+  hoveredEdge: string | null;
+  setHoveredEdge: (edge: string | null) => void;
+  setDrawerOpen: (open: boolean) => void;
+  drawerOpen: boolean;
 }
 
 export default function DynamicGraph({ 
@@ -41,8 +37,12 @@ export default function DynamicGraph({
     setView, 
     selectedFunction,
     setSelectedNode,
-    // setSelectedEdge,
-    // onEdgesUpdate
+    setSelectedEdge,
+    selectedEdge,
+    hoveredEdge,
+    setHoveredEdge,
+    setDrawerOpen,
+    drawerOpen,
   }: DynamicGraphProps) {
 
   const [scale, setScale] = useState(1);
@@ -53,7 +53,6 @@ export default function DynamicGraph({
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const overlayWidth = dimensions ? dimensions.width : (containerRef.current ? containerRef.current.clientWidth : 1000);
   const overlayHeight = dimensions ? dimensions.height : (containerRef.current ? containerRef.current.clientHeight : 800);
@@ -62,23 +61,14 @@ export default function DynamicGraph({
 
   const surroundingNodes = useMemo(() => {
     if (!cocoData || cocoData.length === 0) return [];
-    let minSim = Infinity;
-    let maxSim = -Infinity;
-    cocoData.forEach((item: any) => {
-      const sim = parseFloat(item.SIMILARITY);
-      if (sim < minSim) minSim = sim;
-      if (sim > maxSim) maxSim = sim;
-    });
-    const minRadius = 100; // closest distance (for high similarity)
-    const maxRadius = 425; // furthest distance (for low similarity)
+  
     return cocoData.map((item: any, index: number) => {
-      const sim = parseFloat(item.SIMILARITY);
-      const normSim = maxSim !== minSim ? (sim - minSim) / (maxSim - minSim) : 1;
-      const radius = maxRadius - normSim * (maxRadius - minRadius);
+      const sim = parseFloat(item.SIMILARITY); // expect sim between 0 and 1
+      const radius = 100 + 325 * (1 - sim);
       const angle = (2 * Math.PI * index) / cocoData.length;
       const x = centerX + radius * Math.cos(angle);
       const y = centerY + radius * Math.sin(angle);
-      return { ...item, x, y, normSim };
+      return { ...item, x, y, normSim: sim };
     });
   }, [cocoData, centerX, centerY]);
 
@@ -261,8 +251,9 @@ export default function DynamicGraph({
     }
   };
 
-  const getColorForSimilarity = (norm: number) => {
-    const hue = norm * 120; // 0 = red, 120 = green.
+  const getColorForSimilarity = (sim: number) => {
+    // Assuming sim is between 0 and 1.
+    const hue = sim * 120;
     return `hsl(${hue}, 100%, 50%)`;
   };
 
@@ -278,7 +269,7 @@ export default function DynamicGraph({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-hidden relative"
+      className="w-full h-full relative overflow-hidden"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -307,6 +298,7 @@ export default function DynamicGraph({
         </Button>
       </div>
       <Button
+        //@ts-ignore
           onClick={() => setDrawerOpen(prev => !prev)}
           className="absolute bottom-4 right-4 z-10"
           variant="outline"
@@ -343,32 +335,37 @@ export default function DynamicGraph({
             <>
               {/* SVG for edges from the central node to each surrounding node */}
               <svg className="absolute inset-0" width={overlayWidth} height={overlayHeight}>
-                {surroundingNodes.map((node: any, idx: number) => (
-                  <line
-                    key={idx}
-                    x1={centerX}
-                    y1={centerY}
-                    x2={node.x}
-                    y2={node.y}
-                    stroke="black"
-                    strokeWidth="2"
-                    style={{ pointerEvents: 'visibleStroke', cursor: 'pointer' }}
-                    onClick={() =>
-                      // setSelectedEdge({
-                      //   from: selectedNode,
-                      //   to: node.GS_B_ID,
-                      //   similarity: node.SIMILARITY, // assuming SIMILARITY is a string
-                      //   // Calculate the midpoint of the line as the representative x,y:
-                      //   x: (centerX + node.x) / 2,
-                      //   y: (centerY + node.y) / 2,
-                      // })
-                      console.log('clicked edge')
-                    }
-                    onMouseEnter={(e) => (e.currentTarget.style.stroke = "blue")}
-                    onMouseLeave={(e) => (e.currentTarget.style.stroke = "black")}
-                  />
-                ))}
-              </svg>
+                  {surroundingNodes.map((node: any, idx: number) => {
+                    // Assume node.GS_B_ID uniquely identifies the edge's target.
+                    const isSelected = selectedEdge && selectedEdge.to === node.GS_B_ID;
+                    const isHovered = hoveredEdge === node.GS_B_ID;
+                    const strokeColor = isSelected || isHovered ? "blue" : "black";
+
+                    return (
+                      <line
+                        key={idx}
+                        x1={centerX}
+                        y1={centerY}
+                        x2={node.x}
+                        y2={node.y}
+                        stroke={strokeColor}
+                        strokeWidth="2"
+                        style={{ pointerEvents: 'visibleStroke', cursor: 'pointer' }}
+                        onClick={() =>
+                          setSelectedEdge({
+                            from: selectedNode,
+                            to: node.GS_B_ID,
+                            similarity: Number(node.SIMILARITY),
+                            x: (centerX + node.x) / 2,
+                            y: (centerY + node.y) / 2,
+                          })
+                        }
+                        onMouseEnter={() => setHoveredEdge(node.GS_B_ID)}
+                        onMouseLeave={() => setHoveredEdge(null)}
+                      />
+                    );
+                  })}
+                </svg>
               {/* Fixed Central Node */}
               <div className="absolute" style={{ left: centerX - 40, top: centerY - 20 }}>
                 <TooltipProvider>
@@ -402,9 +399,7 @@ export default function DynamicGraph({
                           {node.GS_B_ID}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        {node.GS_B_ID}
-                      </TooltipContent>
+                      <TooltipContent>{node.GS_B_ID}</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>

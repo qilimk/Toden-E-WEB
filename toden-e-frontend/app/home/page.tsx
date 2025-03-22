@@ -14,6 +14,7 @@ import AppSidebar from "@/components/AppSidebar";
 import MatrixVisualization from "@/components/MatrixVisualization";
 
 import { Edge } from "@/types/edge";
+import SummaryDrawer from "@/components/SummaryDrawer";
 
 // Function for Home Page.
 // 3 Main Components: Dynamic Graph, Function Tabs, Node Combobox
@@ -26,6 +27,8 @@ export default function HomePage() {
   const [selectedFunction, setSelectedFunction] = useState<string>("toden-e");
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [view, setView] = useState<string>("graph");
+  const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
 
   async function handleFileSelect(file: string) {
     const formData = new FormData();
@@ -69,9 +72,8 @@ export default function HomePage() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Navbar />
-      <div className="flex flex-row h-full w-full relative">
         {view === "tabs" ? (
-          <>
+          <div className="flex flex-row h-full w-full relative">
             <Button
               variant="ghost"
               className="absolute top-4 right-4"
@@ -85,37 +87,53 @@ export default function HomePage() {
               setSelectedFile={setSelectedFile}
               setView={setView}
             />
-          </>
+          </div>
         ) : view == "graph" ? (
-          <>
-            {sidebarOpen && <AppSidebar 
-                              nodes={nodesArray} 
-                              setSelectedNode={setSelectedNode} 
-                              selectedFunction={selectedFunction}
-                              setSelectedFunction={setSelectedFunction}
-                              setSelectedFile={setSelectedFile}
-                              selectedFile={selectedFile}
-                              onFileSelect={handleFileSelect}
-                              selectedNode={selectedNode}
-                              setView={setView}
-                              view={view}
-                              selectedEdge={selectedEdge}
-                              setSelectedEdge={setSelectedEdge}
-                            />
+          <div className="flex flex-1 flex-row overflow-hidden">
+            {sidebarOpen && 
+                <AppSidebar 
+                  nodes={nodesArray} 
+                  setSelectedNode={setSelectedNode} 
+                  selectedFunction={selectedFunction}
+                  setSelectedFunction={setSelectedFunction}
+                  setSelectedFile={setSelectedFile}
+                  selectedFile={selectedFile}
+                  onFileSelect={handleFileSelect}
+                  selectedNode={selectedNode}
+                  setView={setView}
+                  view={view}
+                  selectedEdge={selectedEdge}
+                  setSelectedEdge={setSelectedEdge}
+                  hoveredEdge={hoveredEdge}
+                  setHoveredEdge={setHoveredEdge}
+                />
             }
-            <DynamicGraph 
-              clustersData={clustersData} 
-              selectedNode={selectedNode} 
-              selectedFile={selectedFile} 
-              setSidebarOpen={setSidebarOpen}
-              setView={setView}
-              selectedFunction={selectedFunction}
-              setSelectedNode={setSelectedNode}
-              // setSelectedEdge={setSelectedEdge}
-            />
-          </>
+            <div className="flex flex-1 flex-col">
+              <DynamicGraph 
+                clustersData={clustersData} 
+                selectedNode={selectedNode} 
+                selectedFile={selectedFile} 
+                setSidebarOpen={setSidebarOpen}
+                setView={setView}
+                selectedFunction={selectedFunction}
+                setSelectedNode={setSelectedNode}
+                setSelectedEdge={setSelectedEdge}
+                selectedEdge={selectedEdge}
+                hoveredEdge={hoveredEdge}
+                setHoveredEdge={setHoveredEdge}
+                setDrawerOpen={setDrawerOpen}
+                drawerOpen={drawerOpen}
+              />
+              { drawerOpen &&
+                <SummaryDrawer 
+                  setDrawerOpen={setDrawerOpen}
+                  selectedFunction={selectedFunction} 
+                />
+              }
+            </div>  
+          </div>
         ) : view === "matrix" ? (
-          <>
+          <div className="flex flex-row h-full">
             {sidebarOpen && <AppSidebar 
                               nodes={nodesArray} 
                               setSelectedNode={setSelectedNode} 
@@ -129,15 +147,16 @@ export default function HomePage() {
                               view={view}
                               selectedEdge={selectedEdge}
                               setSelectedEdge={setSelectedEdge}
+                              hoveredEdge={hoveredEdge}
+                              setHoveredEdge={setHoveredEdge}
                             />
             }
             <MatrixVisualization 
               setSidebarOpen={setSidebarOpen}
               setView={setView}
             />
-          </>
+          </div>
         ) : (null)}
-      </div>
     </div>
   );
 }

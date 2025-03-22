@@ -40,6 +40,7 @@ import { EdgeCombobox } from "@/components/EdgeCombobox";
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 import { Edge } from "@/types/edge";
+import { Scroll } from "lucide-react";
 
 interface AppSidebarProps {
   nodes: { value: string; label: string }[];
@@ -54,6 +55,8 @@ interface AppSidebarProps {
   view: string;
   selectedEdge: Edge | null;
   setSelectedEdge: (edge: Edge) => void;
+  hoveredEdge: string | null;
+  setHoveredEdge: (edge: string | null) => void;
 }
 
 export default function AppSidebar({ 
@@ -69,6 +72,8 @@ export default function AppSidebar({
     view,
     selectedEdge,
     setSelectedEdge,
+    hoveredEdge,
+    setHoveredEdge,
   }: AppSidebarProps) {
 
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -97,9 +102,9 @@ export default function AppSidebar({
   }, [selectedNode, selectedFile]);
 
   return (
-    <div className="flex flex-row h-full">
-      <div className="px-2 py-2">
-        <Tabs defaultValue={view} onValueChange={setView}>
+    <div className="flex flex-row">
+      <ScrollArea className="px-2 pt-2">
+        <Tabs defaultValue={view} onValueChange={setView} className="px-2 py-2">
           <TabsList className="grid grid-cols-2">
             <TabsTrigger value="graph">Graphing</TabsTrigger>
             <TabsTrigger value="matrix">Matrix</TabsTrigger>
@@ -232,6 +237,8 @@ export default function AppSidebar({
                             <TableRow 
                               key={index}
                               onClick={() => setSelectedEdge(edge)}
+                              onMouseEnter={() => setHoveredEdge(edge.to)}
+                              onMouseLeave={() => setHoveredEdge(null)}
                               className="cursor-pointer hover:bg-muted"
                             >
                               <TableCell>{edge.to}</TableCell>
@@ -269,7 +276,7 @@ export default function AppSidebar({
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
+        </ScrollArea>
       <Separator orientation="vertical" />
     </div>
   );
