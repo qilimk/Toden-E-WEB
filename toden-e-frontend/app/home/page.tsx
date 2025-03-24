@@ -29,6 +29,9 @@ export default function HomePage() {
   const [view, setView] = useState<string>("graph");
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
+  const [selectedMatrix, setSelectedMatrix] = useState<string>("adj");
+  const [prevView, setPrevView] = useState<string>("graph");
+  const [todenEClusters, setTodenEClusters] = useState<any>(null);
 
   async function handleFileSelect(file: string) {
     const formData = new FormData();
@@ -44,7 +47,6 @@ export default function HomePage() {
       const result = await response.json();
       setSelectedNode(result.selectedNode);
       setClustersData({ clusters: result.allowedNodes });
-      setView("graph");
     } catch (error) {
       console.error('Error submitting visualize form:', error);
     }
@@ -69,6 +71,15 @@ export default function HomePage() {
     }
   }, [nodesArray, selectedNode]);
 
+  function handleGoToTabs() {
+    setPrevView(view);
+    setView("tabs");
+  }
+
+  function handleSubmitComplete() {
+    setView(prevView);
+  }
+
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Navbar />
@@ -77,7 +88,7 @@ export default function HomePage() {
             <Button
               variant="ghost"
               className="absolute top-4 right-4"
-              onClick={() => setView("graph")}
+              onClick={() => setView(prevView)}
             >
               <X />
             </Button>
@@ -86,6 +97,7 @@ export default function HomePage() {
               setSelectedNode={setSelectedNode}
               setSelectedFile={setSelectedFile}
               setView={setView}
+              onSubmitComplete={handleSubmitComplete}
             />
           </div>
         ) : view == "graph" ? (
@@ -106,6 +118,9 @@ export default function HomePage() {
                   setSelectedEdge={setSelectedEdge}
                   hoveredEdge={hoveredEdge}
                   setHoveredEdge={setHoveredEdge}
+                  selectedMatrix={selectedMatrix}
+                  setSelectedMatrix={setSelectedMatrix}
+                  todenEClusters={todenEClusters}
                 />
             }
             <div className="flex flex-1 flex-col">
@@ -114,6 +129,7 @@ export default function HomePage() {
                 selectedNode={selectedNode} 
                 selectedFile={selectedFile} 
                 setSidebarOpen={setSidebarOpen}
+                view={view}
                 setView={setView}
                 selectedFunction={selectedFunction}
                 setSelectedNode={setSelectedNode}
@@ -123,6 +139,9 @@ export default function HomePage() {
                 setHoveredEdge={setHoveredEdge}
                 setDrawerOpen={setDrawerOpen}
                 drawerOpen={drawerOpen}
+                onFunctionalitySelect={handleGoToTabs}
+                setTodenEClusters={setTodenEClusters}
+                todenEClusters={todenEClusters}
               />
               { drawerOpen &&
                 <SummaryDrawer 
@@ -133,7 +152,7 @@ export default function HomePage() {
             </div>  
           </div>
         ) : view === "matrix" ? (
-          <div className="flex flex-row h-full">
+          <div className="flex flex-row h-full overflow-hidden">
             {sidebarOpen && <AppSidebar 
                               nodes={nodesArray} 
                               setSelectedNode={setSelectedNode} 
@@ -149,11 +168,18 @@ export default function HomePage() {
                               setSelectedEdge={setSelectedEdge}
                               hoveredEdge={hoveredEdge}
                               setHoveredEdge={setHoveredEdge}
+                              selectedMatrix={selectedMatrix}
+                              setSelectedMatrix={setSelectedMatrix}
+                              todenEClusters={todenEClusters}
                             />
             }
             <MatrixVisualization 
               setSidebarOpen={setSidebarOpen}
               setView={setView}
+              selectedFile={selectedFile}
+              view={view}
+              selectedMatrix={selectedMatrix}
+              onFunctionalitySelect={handleGoToTabs}
             />
           </div>
         ) : (null)}

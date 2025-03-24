@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No fileName provided' }, { status: 400 });
     }
 
-    const cacheFilePath = path.join(process.cwd(), 'go_metadata', `${fileName}Data.csv`);
+    const cacheFilePath = path.join(process.cwd(), 'go_metadata', 'data', `${fileName}Data.csv`);
     let cachedRows: any[] = [];
     let cacheExists = false;
     try {

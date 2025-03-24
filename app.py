@@ -13,8 +13,7 @@ def predict():
     # Get values from form data
     file_selection = request.form.get('file')
     file_upload = request.files.get('fileUpload')
-    alpha_select = request.form.get('alphaSelect')
-    alpha_custom = request.form.get('alphaCustom')
+    alpha = request.form.get('alpha')
     visualize = request.form.get('visualize')
     clusters = request.form.get('clusters')
     summarize = request.form.get('summarize')
@@ -26,7 +25,6 @@ def predict():
     else:
         return jsonify({'error': 'No file provided'}), 400
     
-    alpha = alpha_select if alpha_select else alpha_custom
     visualizeBool = True if visualize == 'yes' else False
     summarizeBool = True if summarize == 'yes' else False
 

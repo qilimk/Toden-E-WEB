@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const filePath = path.join(process.cwd(), "go_metadata", `${selectedFile}Data.csv`);
+    const filePath = path.join(process.cwd(), "go_metadata", 'data', `${selectedFile}Data.csv`);
     const fileContents = await fs.readFile(filePath, "utf-8");
 
     const lines = fileContents.trim().split("\n");

@@ -14,6 +14,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,7 +38,7 @@ import {
   } from "@/components/ui/table";
 import { NodeCombobox } from "@/components/NodeCombobox";
 import { EdgeCombobox } from "@/components/EdgeCombobox";
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { Edge } from "@/types/edge";
 import { Scroll } from "lucide-react";
@@ -57,6 +58,9 @@ interface AppSidebarProps {
   setSelectedEdge: (edge: Edge) => void;
   hoveredEdge: string | null;
   setHoveredEdge: (edge: string | null) => void;
+  selectedMatrix: string;
+  setSelectedMatrix: (matrix: string) => void;
+  todenEClusters: { clusters: string[][]; sortedNodes: string[] } | null;
 }
 
 export default function AppSidebar({ 
@@ -74,6 +78,9 @@ export default function AppSidebar({
     setSelectedEdge,
     hoveredEdge,
     setHoveredEdge,
+    selectedMatrix,
+    setSelectedMatrix,
+    todenEClusters,
   }: AppSidebarProps) {
 
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -148,7 +155,14 @@ export default function AppSidebar({
                         <SelectContent>
                           <SelectGroup>
                             <SelectLabel>Files</SelectLabel>
-                            <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
+                            <SelectItem value="Leukemia_2_0.25">Leukemia (2 Clusters), (0.25 Alpha)</SelectItem>
+                            <SelectItem value="Leukemia_2_0.5">Leukemia (2 Clusters), (0.5 Alpha)</SelectItem>
+                            <SelectItem value="Leukemia_3_0.25">Leukemia (3 Clusters), (0.25 Alpha)</SelectItem>
+                            <SelectItem value="Leukemia_3_0.5">Leukemia (3 Clusters), (0.5 Alpha)</SelectItem>
+                            <SelectItem value="Leukemia_4_0.25">Leukemia (4 Clusters), (0.25 Alpha)</SelectItem>
+                            <SelectItem value="Leukemia_4_0.5">Leukemia (4 Clusters), (0.5 Alpha)</SelectItem>
+                            <SelectItem value="Leukemia_5_0.25">Leukemia (5 Clusters), (0.25 Alpha)</SelectItem>
+                            <SelectItem value="Leukemia_5_0.5">Leukemia (5 Clusters), (0.5 Alpha)</SelectItem>
                             <SelectItem value="custom">Custom</SelectItem>
                           </SelectGroup>
                         </SelectContent>
@@ -156,6 +170,9 @@ export default function AppSidebar({
                     </div>
                 </div>
               </CardContent>
+              <CardFooter className="text-muted-foreground sm:text-sm">
+                *CoCo clustering is same for all files.
+              </CardFooter>
             </Card>
             {selectedFunction === "toden-e" ? (
               <Card>
@@ -260,11 +277,71 @@ export default function AppSidebar({
               null
             )}
           </TabsContent>
-          <TabsContent value="matrix">
+          <TabsContent value="matrix" className="space-y-2">
             <Card>
               <CardHeader>
                 <CardTitle>
-                  Testing
+                  Matrix Selection
+                </CardTitle>
+                <CardDescription>
+                  Choose what matrix you want for your dataset.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-2">
+                  <Label className="col-span-1">Choose File</Label>
+                  <div className="col-span-2">
+                    <Select onValueChange={(value) => {
+                            setSelectedFile(value);
+                            onFileSelect(value);
+                            }}
+                            value={selectedFile}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a file..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Files</SelectLabel>
+                          <SelectItem value="Leukemia_2_0.25">Leukemia (2 Clusters), (0.25 Alpha)</SelectItem>
+                          <SelectItem value="Leukemia_2_0.5">Leukemia (2 Clusters), (0.5 Alpha)</SelectItem>
+                          <SelectItem value="Leukemia_3_0.25">Leukemia (3 Clusters), (0.25 Alpha)</SelectItem>
+                          <SelectItem value="Leukemia_3_0.5">Leukemia (3 Clusters), (0.5 Alpha)</SelectItem>
+                          <SelectItem value="Leukemia_4_0.25">Leukemia (4 Clusters), (0.25 Alpha)</SelectItem>
+                          <SelectItem value="Leukemia_4_0.5">Leukemia (4 Clusters), (0.5 Alpha)</SelectItem>
+                          <SelectItem value="Leukemia_5_0.25">Leukemia (5 Clusters), (0.25 Alpha)</SelectItem>
+                          <SelectItem value="Leukemia_5_0.5">Leukemia (5 Clusters), (0.5 Alpha)</SelectItem>
+                          <SelectItem value="custom">Custom</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Label className="col-span-1">Select Matrix</Label>
+                  <div className="col-span-2">
+                    <Select onValueChange={(value) => {
+                            setSelectedMatrix(value);
+                            }}
+                            value={selectedMatrix}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a matrix..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Matrices</SelectLabel>
+                          <SelectItem value="adj">Adj Matrix</SelectItem>
+                          <SelectItem value="con">Con Matrix</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  Matrix Information
                 </CardTitle>
               </CardHeader>
               <CardContent>

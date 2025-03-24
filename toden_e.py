@@ -1023,15 +1023,15 @@ def summarize_chunk(text, chunk_size, summarizer):
 
 
 
-def summarize_cluster_results(clusering_results_path= "real_data_clustering_results.csv"):
+def summarize_cluster_results(clustering_results_path= "Leukemia.csv"):
     
     max_length = 1024  # Adjust as needed
 
-    if isinstance(clusering_results_path, str):
-        df = pd.read_csv(clusering_results_path)
-    elif hasattr(clusering_results_path, 'read'):
-        clusering_results_path.seek(0)
-        df = pd.read_csv(clusering_results_path)
+    if isinstance(clustering_results_path, str):
+        df = pd.read_csv(clustering_results_path)
+    elif hasattr(clustering_results_path, 'read'):
+        clustering_results_path.seek(0)
+        df = pd.read_csv(clustering_results_path)
     else:
         raise ValueError("Invalid type for clusering_results_path")
     
@@ -1054,15 +1054,15 @@ def summarize_cluster_results(clusering_results_path= "real_data_clustering_resu
             # prompt = summarize_prompt(input_text)
             summary = summarize_text(input_text)
             results_dict[idx] = [summary]
-            # first_try = generate_text_chunks(input_text, summarize_prompt, max_length, max_new_tokens=100)
-            # while len(first_try) > 50:
-            #     print("make it shorter....")
-            #     first_try = generate_text_chunks(first_try, summarize_prompt, max_length, max_new_tokens=50)
+            first_try = generate_text_chunks(input_text, summarize_prompt, max_length)
+            while len(first_try) > 50:
+                print("make it shorter....")
+                first_try = generate_text_chunks(first_try, summarize_prompt, max_length)
 
-            # save_result =first_try
+            save_result = first_try
 
         df_result = pd.DataFrame(results_dict)
-        save_name = clusering_results_path.split('.')[0][:-24]
+        save_name = clustering_results_path.split('.')[0][:-24]
         save_path = f"{algo}_{save_name}_cluster_summarizatoin.csv"
         df_result.to_csv(save_path, index=False)
         print(results_dict)
@@ -1658,7 +1658,7 @@ def toden_e_predict(pags_txt_path = "Leukemia_drug_resistantVSsensitive.txt", al
     print("Visualize:", is_visualized)
     print("Summary:", is_summary)
 
-    save_file_path = "default.csv"
+    save_file_path = f"./toden-e-frontend/go_metadata/data/Leukemia_{num_clusters}_{alpha}.csv"
 
     clustering_algorithms = {'Agglomerative': AgglomerativeClustering(n_clusters=num_clusters),}
 
@@ -1683,6 +1683,17 @@ def toden_e_predict(pags_txt_path = "Leukemia_drug_resistantVSsensitive.txt", al
     sorted_nodes_by_names = sorted(G.nodes())
     adj_matrix = nx.to_numpy_array(G, nodelist=sorted_nodes_by_names)
     con_matrix = np.concatenate((alpha*pags_embeddings, (1-alpha)*adj_matrix), axis=1)
+    
+    adj_csv_path = f"./toden-e-frontend/go_metadata/matrix/Leukemia_{num_clusters}_{alpha}_adj.csv"
+    con_csv_path = f"./toden-e-frontend/go_metadata/matrix/Leukemia_{num_clusters}_{alpha}_con.csv"
+
+    # Convert the numpy arrays to DataFrames
+    adj_df = pd.DataFrame(adj_matrix)
+    con_df = pd.DataFrame(con_matrix)
+
+    # Write the DataFrames to CSV files without headers or index so that the dimensions match the matrix
+    adj_df.to_csv(adj_csv_path, index=False, header=False)
+    con_df.to_csv(con_csv_path, index=False, header=False)
 
     results = {}
     # Perform clustering with each algorithm
@@ -1718,8 +1729,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Toden-E Predict Functionality')
     parser.add_argument('--func', type=str, required=True, help='Functionality to execute: visualize or partition_score')
-    parser.add_argument('--file_path', type=str, default="Leukemia_drug_resistantVSsensitive.txt", help='Path to the text file containing gene names.')
-    parser.add_argument('--clusering_results_path', type=str, default="default.csv", help='Path to the toden-e results.')
+    parser.add_argument('--file_path', type=str, default="Leukemia.txt", help='Path to the text file containing gene names.')
+    parser.add_argument('--clusering_results_path', type=str, default="Leukemia.csv", help='Path to the toden-e results.')
     parser.add_argument('--alpha', type=float, default=0.5, help='Alpha parameter for clustering.')
     parser.add_argument('--num_clusters', type=int, default=2, help='Number of clusters for partitioning.')
     parser.add_argument('--is_visualized', action='store_true', help='Flag to indicate if visualization is required.')
@@ -1735,8 +1746,8 @@ if __name__ == "__main__":
     elif args.func == "super_pag":
         toden_e_predict(pags_txt_path=args.file_path, alpha=args.alpha, num_clusters=args.num_clusters, is_visualized=args.is_visualized)
 
-    elif args.func == "summerization":
-        summarize_cluster_results(clusering_results_path= args.clusering_results_path)
+    elif args.func == "summarization":
+        summarize_cluster_results(clustering_results_path= args.clusering_results_path)
     else:
         # Default behavior or error handling
         print("Invalid function specified. Please use 'visualize' or 'partition_score'.")

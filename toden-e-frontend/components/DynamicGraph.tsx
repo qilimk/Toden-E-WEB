@@ -3,21 +3,16 @@
 import React, { useMemo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Plus, Minus, TableOfContents, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Edge } from "@/types/edge";
-
+import { UMAP } from "umap-js";
 
 interface DynamicGraphProps {
   clustersData: { clusters: string[] } | null;
   selectedNode: string;
   selectedFile: string | null;
   setSidebarOpen: (open: boolean) => void;
+  view: string;
   setView: (view: string) => void;
   selectedFunction: string;
   setSelectedNode: (view: string) => void;
@@ -27,6 +22,9 @@ interface DynamicGraphProps {
   setHoveredEdge: (edge: string | null) => void;
   setDrawerOpen: (open: boolean) => void;
   drawerOpen: boolean;
+  onFunctionalitySelect: () => void;
+  setTodenEClusters: (clusters: { clusters: string[][]; sortedNodes: string[] } | null) => void;
+  todenEClusters: { clusters: string[][]; sortedNodes: string[] } | null;
 }
 
 export default function DynamicGraph({ 
@@ -34,6 +32,7 @@ export default function DynamicGraph({
     selectedNode, 
     selectedFile, 
     setSidebarOpen, 
+    view,
     setView, 
     selectedFunction,
     setSelectedNode,
@@ -43,12 +42,15 @@ export default function DynamicGraph({
     setHoveredEdge,
     setDrawerOpen,
     drawerOpen,
+    onFunctionalitySelect,
+    setTodenEClusters,
+    todenEClusters,
   }: DynamicGraphProps) {
 
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [cocoData, setCocoData] = useState<any>(null);
-  const [todenEData, setTodenEData] = useState<any>(null);
+  const [umapCoords, setUmapCoords] = useState<number[][]>([]);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
@@ -82,82 +84,125 @@ export default function DynamicGraph({
     }
   }, []);
 
-  useEffect(() => {
-    if (selectedFunction !== "CoCo") return;
-    if (!selectedNode || !selectedFile) return;
-    const fetchCoco = async () => {
-      try {
-        const allowedNodes = clustersData
-          ? clustersData.clusters
-              .flatMap((cluster) => cluster.split(",").map((n) => n.trim()))
-              .filter((n) => n !== "")
-          : [];
-        const response = await fetch("/api/get-coco-visualization", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ node: selectedNode, allowedNodes, fileName: selectedFile }),
-        });
-        if (!response.ok) {
-          const text = await response.text();
-          console.error("Error response:", text);
-          throw new Error("Error fetching CoCo data");
-        }
-        const data = await response.json();
-        console.log("CoCo Data", data.results)
-        setCocoData(data.results);
-      } catch (error) {
-        console.error("Error fetching CoCo visualization data:", error);
+  const fetchCocoData = async () => {
+    try {
+      const allowedNodes = clustersData
+        ? clustersData.clusters
+            .flatMap((cluster) => cluster.split(",").map((n) => n.trim()))
+            .filter((n) => n !== "")
+        : [];
+      const response = await fetch("/api/get-coco-visualization", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ node: selectedNode, allowedNodes, fileName: selectedFile }),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("Error response:", text);
+        throw new Error("Error fetching CoCo data");
       }
-    };
-    fetchCoco();
-  }, [selectedNode, clustersData, selectedFile, selectedFunction]);
-
-  // useEffect(() => {
-  //   if (selectedFunction === "CoCo" && surroundingNodes.length > 0) {
-  //     const availableEdges = surroundingNodes.map((node: any) => ({
-  //       from: selectedNode,
-  //       to: node.GS_B_ID,
-  //       similarity: node.SIMILARITY,
-  //       x: (centerX + node.x) / 2,
-  //       y: (centerY + node.y) / 2,
-  //     }));
-  //     if (onEdgesUpdate) {
-  //       onEdgesUpdate(availableEdges);
+      const data = await response.json();
+      console.log("CoCo Data", data.results);
+      setCocoData(data.results);
+    } catch (error) {
+      console.error("Error fetching CoCo visualization data:", error);
+    }
+  };
+  
+  // const fetchTodenEData = async () => {
+  //   try {
+  //     const allowedNodes = clustersData
+  //       ? clustersData.clusters
+  //           .flatMap((cluster) => cluster.split(",").map((n) => n.trim()))
+  //           .filter((n) => n !== "")
+  //       : [];
+  //     const response = await fetch("/api/get-toden-e-visualization", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ node: selectedNode, allowedNodes, fileName: selectedFile }),
+  //     });
+  //     if (!response.ok) {
+  //       const text = await response.text();
+  //       console.error("Error response:", text);
+  //       throw new Error("Error fetching Toden‑E data");
   //     }
-  //   } else if (onEdgesUpdate) {
-  //     onEdgesUpdate([]);
+  //     const data = await response.json();
+  //     console.log("Toden‑E Data", data.results);
+  //     setTodenEData(data.results[0]);
+  //   } catch (error) {
+  //     console.error("Error fetching Toden‑E visualization data:", error);
   //   }
-  // }, [surroundingNodes, selectedNode, centerX, centerY, selectedFunction, onEdgesUpdate]);
+  // };
+
+  const fetchConMatrixAndComputeUMAP = async () => {
+    if (!selectedFile) return;
+
+    try {
+      const response = await fetch(
+        `/api/get-matrix-information?file=${encodeURIComponent(selectedFile)}&type=con`
+      );
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("Error response:", text);
+        throw new Error("Error fetching concatenated matrix");
+      }
+      const data = await response.json();
+      // Convert matrix strings to numbers
+      const conMatrix = data.matrix.map((row: string[]) => row.map(cell => parseFloat(cell)));
+      // Compute 2D coordinates with UMAP
+      const umap = new UMAP({ nComponents: 2, nNeighbors: 15, minDist: 0.1 });
+      const coords = umap.fit(conMatrix);
+      console.log("Computed UMAP coordinates:", coords);
+      setUmapCoords(coords);
+    } catch (error) {
+      console.error("Error processing concatenated matrix for UMAP:", error);
+    }
+  };
+
+  const fetchTodenEClusters = async () => {
+    if (!selectedFile) return;
+    try {
+      const response = await fetch('/api/get-toden-e-visualization', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: selectedFile })
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("Error response:", text);
+        throw new Error("Error fetching Toden‑E cluster data");
+      }
+      const data = await response.json();
+      console.log("Toden‑E Cluster Data", data);
+      setTodenEClusters(data);
+    } catch (error) {
+      console.error("Error fetching Toden‑E cluster data:", error);
+    }
+  };
 
   useEffect(() => {
-    if (selectedFunction !== "toden-e") return;
+    if (view !== "graph") return;
     if (!selectedNode || !selectedFile) return;
-    const fetchTodenE = async () => {
-      try {
-        const allowedNodes = clustersData
-          ? clustersData.clusters
-              .flatMap((cluster) => cluster.split(",").map((n) => n.trim()))
-              .filter((n) => n !== "")
-          : [];
-        const response = await fetch("/api/get-toden-e-visualization", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ node: selectedNode, allowedNodes, fileName: selectedFile }),
-        });
-        if (!response.ok) {
-          const text = await response.text();
-          console.error("Error response:", text);
-          throw new Error("Error fetching Toden‑E data");
-        }
-        const data = await response.json();
-        console.log("Toden-E Data", data.results)
-        setTodenEData(data.results[0]);
-      } catch (error) {
-        console.error("Error fetching Toden‑E visualization data:", error);
+  
+    if (selectedFunction === "CoCo") {
+      fetchCocoData();
+    } else if (selectedFunction === "toden-e") {
+      fetchConMatrixAndComputeUMAP();
+      fetchTodenEClusters();
+    }
+  }, [view, selectedFunction, selectedNode, selectedFile, clustersData]);
+
+  const getClusterIndexForNode = (nodeId: string): number => {
+    if (!todenEClusters || !todenEClusters.clusters) return -1;
+    for (let i = 0; i < todenEClusters.clusters.length; i++) {
+      if (todenEClusters.clusters[i].includes(nodeId)) {
+        return i;
       }
-    };
-    fetchTodenE();
-  }, [selectedNode, clustersData, selectedFile, selectedFunction]);
+    }
+    return -1;
+  };
+
+  const clusterColors = ["red", "green", "blue", "orange", "purple", "cyan", "magenta", "yellow"];
 
   const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
 
@@ -291,7 +336,7 @@ export default function DynamicGraph({
           <TableOfContents/>
         </Button>
         <Button
-            onClick={() => setView("tabs")}
+            onClick={onFunctionalitySelect}
             variant="outline"
           >
           Select Functionality
@@ -305,11 +350,6 @@ export default function DynamicGraph({
         >
         {drawerOpen ? <ChevronDown /> : <ChevronUp />}
       </Button>
-      {clustersData && selectedFunction === "toden-e" && (
-        <div className="absolute top-4 left-1/2 z-20 transform -translate-x-1/2 text-white text-2xl font-bold">
-          <p>Algorithm: {todenEData?.algorithm}</p>
-        </div>
-      )}
       {/* Transformed Container: Background and Graph Content Scale Together */}
       <div
         style={{
@@ -407,111 +447,57 @@ export default function DynamicGraph({
             </>
           ) : selectedFunction === "toden-e" ? (
             <>
-              {(() => {
-                const clusters = todenEData?.clusters || [];
-                const numClusters = clusters.length;
-                let clusterCenters: { x: number; y: number }[] = [];
-                const offsetVal = 300; // adjust spacing between cluster centers
-
-                // Cluster center calculations from your original code
-                if (numClusters === 2) {
-                  clusterCenters = [
-                    { x: centerX - offsetVal, y: centerY },
-                    { x: centerX + offsetVal, y: centerY },
+              {umapCoords.length > 0 && todenEClusters && todenEClusters.sortedNodes ? (
+                (() => {
+                  // Calculate average (mean) of UMAP coordinates
+                  const avg = umapCoords.reduce(
+                    (acc, [x, y]) => [acc[0] + x, acc[1] + y],
+                    [0, 0]
+                  );
+                  const avgCoord: [number, number] = [
+                    avg[0] / umapCoords.length,
+                    avg[1] / umapCoords.length,
                   ];
-                } else if (numClusters === 3) {
-                  clusterCenters = [
-                    { x: centerX, y: centerY - offsetVal },
-                    { x: centerX - offsetVal, y: centerY + offsetVal },
-                    { x: centerX + offsetVal, y: centerY + offsetVal },
-                  ];
-                } else if (numClusters === 4) {
-                  clusterCenters = [
-                    { x: centerX - offsetVal, y: centerY - offsetVal },
-                    { x: centerX + offsetVal, y: centerY - offsetVal },
-                    { x: centerX - offsetVal, y: centerY + offsetVal },
-                    { x: centerX + offsetVal, y: centerY + offsetVal },
-                  ];
-                } else if (numClusters === 5) {
-                  const radius = offsetVal;
-                  clusterCenters = Array.from({ length: 5 }, (_, i) => {
-                    const angle = ((-90 + i * 72) * Math.PI) / 180;
-                    return {
-                      x: centerX + radius * Math.cos(angle),
-                      y: centerY + radius * Math.sin(angle),
-                    };
-                  });
-                }
+                  const scaleFactor = 75; // adjust this factor as needed
 
-                // Define ring configurations for nodes within each cluster
-                const ringConfigs = [
-                  { capacity: 2, radius: 0 },
-                  { capacity: 10, radius: 50 },
-                  { capacity: 20, radius: 100 },
-                  { capacity: 35, radius: 150 },
-                  { capacity: 45, radius: 200 },
-                  { capacity: 55, radius: 250 },
-                ];
-
-                for (let i = 1; i < ringConfigs.length; i++) {
-                  const adjustment = Math.floor(Math.random() * 4);
-                  const sign = Math.random() < 0.5 ? -1 : 1;
-                  ringConfigs[i].capacity = Math.max(ringConfigs[i].capacity + sign * adjustment, 0);
-                }
-
-                // Define colors for clusters
-                const clusterColors = ["red", "green", "blue", "orange", "purple"];
-
-                return clusterCenters.map((clusterCenter, clusterIndex) => {
-                  const cluster = clusters[clusterIndex] || [];
-                  let nodesPlaced = 0;
-
-                  // Render rings for this cluster
-                  return ringConfigs.map((ring, ringIndex) => {
-                    const nodesInThisRing = Math.min(
-                      ring.capacity,
-                      cluster.length - nodesPlaced
-                    );
-
-                    if (nodesInThisRing <= 0) return null;
-
-                    const ringNodes = cluster.slice(nodesPlaced, nodesPlaced + nodesInThisRing);
-                    nodesPlaced += nodesInThisRing;
+                  return umapCoords.map((coord, index) => {
+                    const sortedNodes: string[] = todenEClusters.sortedNodes;
+                    const nodeId = sortedNodes[index];
+                    // Determine cluster index for this node
+                    let clusterIndex = -1;
+                    if (todenEClusters.clusters && Array.isArray(todenEClusters.clusters)) {
+                      for (let i = 0; i < todenEClusters.clusters.length; i++) {
+                        if (todenEClusters.clusters[i].includes(nodeId)) {
+                          clusterIndex = i;
+                          break;
+                        }
+                      }
+                    }
+                    const clusterColors = ["red", "green", "blue", "orange", "purple", "cyan", "magenta", "yellow"];
+                    const color = clusterIndex >= 0 ? clusterColors[clusterIndex % clusterColors.length] : "red";
 
                     return (
-                      <div
-                        key={`${clusterIndex}-${ringIndex}`}
-                        className="absolute"
-                        style={{ left: clusterCenter.x, top: clusterCenter.y }}
-                      >
-                        {// @ts-ignore
-                        ringNodes.map((node, nodeIndex) => {
-                          const angle = (2 * Math.PI * nodeIndex) / nodesInThisRing;
-                          const randomOffset = Math.random() * 35;
-                          const nodeX = (ring.radius + randomOffset) * Math.cos(angle);
-                          const nodeY = (ring.radius + randomOffset) * Math.sin(angle);
-
-                          return (
-                            <div
-                              key={nodeIndex}
-                              className="absolute"
-                              style={{ left: nodeX - 15, top: nodeY - 15 }}
-                            >
-                              <Button
-                                variant="outline"
-                                className="text-xs rounded-full"
-                                style={{ backgroundColor: clusterColors[clusterIndex % clusterColors.length] }}
-                              >
-                                {/* Add node content here if needed */}
-                              </Button>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <Button
+                        key={index}
+                        style={{
+                          position: "absolute",
+                          // Shift coordinates by subtracting avgCoord and then adding half of container dimensions
+                          left: `${(coord[0] - avgCoord[0]) * scaleFactor + dimensions!.width / 2}px`,
+                          top: `${(coord[1] - avgCoord[1]) * scaleFactor + dimensions!.height / 2}px`,
+                          backgroundColor: color,
+                          width: "20px",
+                          height: "20px",
+                          padding: 0,
+                        }}
+                        className="border-2 border-black"
+                        title={`Node ${nodeId}`}
+                      />
                     );
                   });
-                });
-              })()}
+                })()
+              ) : (
+                <div className="text-white">Loading visualization...</div>
+              )}
             </>
           ) : null
         )}

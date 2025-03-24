@@ -14,8 +14,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file selection provided' }, { status: 400 });
     }
     
-    const datasetFilePath = path.join(process.cwd(), 'go_metadata', `${fileName}.csv`);
-    const cacheFilePath = path.join(process.cwd(), 'go_metadata', `${fileName}Data.csv`);
+    const datasetFilePath = path.join(process.cwd(), 'go_metadata', 'data', `${fileName}.csv`);
+    const cacheFilePath = path.join(process.cwd(), 'go_metadata', 'data', `${fileName}Data.csv`);
     const hugeFilePath = path.join(process.cwd(), 'go_metadata', 'm_type_biological_process.txt');
 
     let datasetContent;
@@ -82,13 +82,10 @@ export async function POST(request: Request) {
     }
     
     const firstNode = allowedNodes[0] || '';
-    const filteredResults = results.filter(item => item.GS_A_ID === firstNode);
-    // console.log("Returning relationships for node:", firstNode, filteredResults);
     
     return NextResponse.json({ 
       selectedNode: firstNode, 
       allowedNodes, 
-      // results: filteredResults 
     });
   } catch (error) {
     console.error("Error in create-m-type-data route:", error);

@@ -10,8 +10,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No fileName provided' }, { status: 400 });
     }
 
-    // Build the file path (e.g., go_metadata/Leukemia.csv)
-    const filePath = path.join(process.cwd(), 'go_metadata', `${fileName}.csv`);
+    // Build the file path (e.g., go_metadata/data/Leukemia_2_0.5.csv)
+    const filePath = path.join(process.cwd(), 'go_metadata', 'data', `${fileName}.csv`);
     const fileContent = await fs.readFile(filePath, 'utf8');
 
     // Split file content into lines and filter out empty ones
@@ -20,32 +20,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File does not contain enough data.' }, { status: 400 });
     }
 
-    // Use a regex to split by commas that are not inside quotes
+    // Function to split CSV line by commas not within quotes.
     const splitCSV = (line: string) =>
       line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
 
-    // The first line is assumed to be a header.
-    const headers = splitCSV(lines[0]);
-    // Calculate the number of clusters (all columns except the first one)
+    // The first line is assumed to be a header, e.g., "ID,0,1"
+    const headers = splitCSV(lines[0]).map(h => h.trim());
+    // All columns except the first represent clusters
     const numClusters = headers.length - 1;
 
-    // Process each subsequent row.
-    const results = lines.slice(1).map(line => {
-      const cols = splitCSV(line);
-      const algorithm = cols[0].trim();
-      // For each cluster column, remove surrounding quotes and split the string by commas.
-      const clusters = [];
-      for (let i = 1; i < cols.length; i++) {
-        // Remove surrounding quotes if they exist
-        const cleaned = cols[i].trim().replace(/^"|"$/g, '');
-        // Split the cleaned string by commas and trim each value.
-        const clusterNodes = cleaned.split(',').map(n => n.trim()).filter(Boolean);
-        clusters.push(clusterNodes);
-      }
-      return { algorithm, clusters };
-    });
+    // Process the data row (assume only one row for cluster info)
+    const dataRow = splitCSV(lines[1]);
+    const algorithm = dataRow[0].trim();
 
-    return NextResponse.json({ results });
+    // Parse each cluster column
+    const clusters: string[][] = [];
+    for (let i = 1; i < dataRow.length; i++) {
+      // Remove surrounding quotes if they exist
+      const cleaned = dataRow[i].trim().replace(/^"|"$/g, '');
+      // Split by commas and remove extra whitespace
+      const clusterNodes = cleaned.split(',').map(node => node.trim()).filter(Boolean);
+      clusters.push(clusterNodes);
+    }
+
+    // Build the union of all nodes from all clusters and sort them.
+    const allNodesSet = new Set<string>();
+    clusters.forEach(cluster => {
+      cluster.forEach(node => allNodesSet.add(node));
+    });
+    const sortedNodes = Array.from(allNodesSet).sort();
+
+    return NextResponse.json({
+      algorithm,
+      clusters,
+      sortedNodes,
+      numClusters
+    });
   } catch (error) {
     console.error("Error in get-toden-e-visualization API:", error);
     return NextResponse.json({ error: 'Error processing file' }, { status: 500 });

@@ -17,14 +17,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger,} from "@/components/ui/tabs";
 import { HelpCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 
 // Form Schema for Prediction Functionality
 const PredictFormSchema = z
   .object({
     file: z.string().optional(),
     fileUpload: z.any().optional(),
-    alphaSelect: z.string().optional(),
-    alphaCustom: z.string().optional(),
+    alpha: z.string().nonempty({ message: "Alpha value is required." }),
     visualize: z
       .string()
       .nonempty({ message: "Please select Yes or No for visualize." })
@@ -45,13 +45,6 @@ const PredictFormSchema = z
   .refine(
     (data) => data.file || (data.fileUpload && data.fileUpload.length > 0),
     { message: "Please select a file or upload one.", path: ["fileUpload"] }
-  )
-  // Ensure at least one of alphaSelect or alphaCustom is provided
-  .refine(
-    (data) =>
-      (data.alphaSelect && data.alphaSelect.trim() !== "") ||
-      (data.alphaCustom && data.alphaCustom.trim() !== ""),
-    { message: "Please select an alpha value or enter a custom one.", path: ["alphaCustom"] }
   );
 
 // Form Schema for Visualization Functionality
@@ -86,10 +79,11 @@ interface TabsContentProps {
   setSelectedNode: (data: any) => void;
   setSelectedFile: (data: any) => void;
   setView: (view: string) => void;
+  onSubmitComplete: () => void;
 }
 
 // Function Tabs Component
-export default function FunctionTabs({ setClustersData, setSelectedNode, setSelectedFile, setView }: TabsContentProps) {
+export default function FunctionTabs({ setClustersData, setSelectedNode, setSelectedFile, setView, onSubmitComplete }: TabsContentProps) {
   const [predictFileKey, setPredictFileKey] = useState(0);
   const [visualizeFileKey, setVisualizeFileKey] = useState(0);
   const [summarizeFileKey, setSummarizeFileKey] = useState(0);
@@ -124,8 +118,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     defaultValues: {
       file: "",
       fileUpload: "",
-      alphaSelect: "",
-      alphaCustom: "",
+      alpha: "0.5",
       visualize: undefined,
       clusters: "",
       summarize: undefined,
@@ -165,8 +158,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
       formData.append('fileUpload', data.fileUpload[0]);
     }
     
-    formData.append('alphaSelect', data.alphaSelect || '');
-    formData.append('alphaCustom', data.alphaCustom || '');
+    formData.append('alpha', data.alpha || '');
     formData.append('visualize', data.visualize || '');
     formData.append('clusters', data.clusters || '');
     formData.append('summarize', data.summarize || '');
@@ -190,6 +182,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     } finally {
       setIsLoading(false);
       setPredictFileKey(prev => prev + 1);
+      onSubmitComplete();
     }
   }
 
@@ -226,7 +219,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
       // console.log('Visualize result:', result);
       setSelectedNode(result.selectedNode);
       setClustersData({ clusters: result.allowedNodes });
-      setView("graph");
+      onSubmitComplete();
     } catch (error) {
       console.error('Error submitting visualize form:', error);
     } finally {
@@ -271,6 +264,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     } finally {
       setIsLoading(false);
       setSummarizeFileKey(prev => prev + 1);
+      onSubmitComplete();
     }
   }
 
@@ -384,9 +378,6 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                                 <SelectGroup>
                                   <SelectLabel>File</SelectLabel>
                                   <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
-                                  {/* <SelectItem value="file2">File2</SelectItem>
-                                  <SelectItem value="file3">File3</SelectItem>
-                                  <SelectItem value="file4">File4</SelectItem> */}
                                 </SelectGroup>
                               </SelectContent>
                             </Select>
@@ -420,46 +411,26 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                   {/* Row 2: Alpha, Visualize, and Clusters (each spanning 1 column) */}
                   <div className="grid grid-cols-8 gap-4 items-center">
                     <FormLabel className="text-right">Alpha</FormLabel>
-                    <div className="col-span-2">
+                    <div className="col-span-5">
                       <FormField
                         control={PredictForm.control}
-                        name="alphaSelect"
+                        name="alpha"
                         render={({ field }) => (
                           <FormControl>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Alpha" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  <SelectLabel>Alpha</SelectLabel>
-                                  <SelectItem value="0.25">0.25</SelectItem>
-                                  <SelectItem value="0.5">0.5</SelectItem>
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                        )}
-                      />
-                    </div>
-                    <div className="text-center col-span-1">
-                      <span>or</span>
-                    </div>
-                    <div className="col-span-2">
-                      <FormField
-                        control={PredictForm.control}
-                        name="alphaCustom"
-                        render={({ field }) => (
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="Custom Alpha"
-                              onChange={field.onChange}
-                              value={field.value}
-                              min="0"
-                              max="1"
-                              step="0.05"
-                            />
+                            <div className="flex items-center space-x-4">
+                              <Slider
+                                value={[Number(field.value) * 100]} // convert stored 0–1 value to 0–100 for the slider
+                                onValueChange={(vals) => {
+                                  // Convert the slider value back to 0–1, formatted as a string with two decimals.
+                                  field.onChange((vals[0] / 100).toFixed(2));
+                                }}
+                                defaultValue={[50]}
+                                max={100}
+                                step={1}
+                                className="w-full"
+                              />
+                              <span>{field.value}</span>
+                            </div>
                           </FormControl>
                         )}
                       />
@@ -636,10 +607,14 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                               <SelectContent>
                                 <SelectGroup>
                                   <SelectLabel>File</SelectLabel>
-                                  <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
-                                  {/* <SelectItem value="file2">File2</SelectItem>
-                                  <SelectItem value="file3">File3</SelectItem>
-                                  <SelectItem value="file4">File4</SelectItem> */}
+                                  <SelectItem value="Leukemia_2_0.25">Leukemia (2 Clusters), (0.25 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_2_0.5">Leukemia (2 Clusters), (0.5 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_3_0.25">Leukemia (3 Clusters), (0.25 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_3_0.5">Leukemia (3 Clusters), (0.5 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_4_0.25">Leukemia (4 Clusters), (0.25 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_4_0.5">Leukemia (4 Clusters), (0.5 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_5_0.25">Leukemia (5 Clusters), (0.25 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_5_0.5">Leukemia (5 Clusters), (0.5 Alpha)</SelectItem>
                                 </SelectGroup>
                               </SelectContent>
                             </Select>
@@ -770,7 +745,14 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                               <SelectContent>
                                 <SelectGroup>
                                   <SelectLabel>File</SelectLabel>
-                                  <SelectItem value="Leukemia">Leukemia Dataset</SelectItem>
+                                  <SelectItem value="Leukemia_2_0.25">Leukemia (2 Clusters), (0.25 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_2_0.5">Leukemia (2 Clusters), (0.5 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_3_0.25">Leukemia (3 Clusters), (0.25 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_3_0.5">Leukemia (3 Clusters), (0.5 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_4_0.25">Leukemia (4 Clusters), (0.25 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_4_0.5">Leukemia (4 Clusters), (0.5 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_5_0.25">Leukemia (5 Clusters), (0.25 Alpha)</SelectItem>
+                                  <SelectItem value="Leukemia_5_0.5">Leukemia (5 Clusters), (0.5 Alpha)</SelectItem>
                                 </SelectGroup>
                               </SelectContent>
                             </Select>
