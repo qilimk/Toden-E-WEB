@@ -20,6 +20,8 @@ interface DynamicGraphProps {
   selectedEdge: Edge | null;
   hoveredEdge: string | null;
   setHoveredEdge: (edge: string | null) => void;
+  hoveredNode: string | null;
+  setHoveredNode: (node: string | null) => void;
   setDrawerOpen: (open: boolean) => void;
   drawerOpen: boolean;
   onFunctionalitySelect: () => void;
@@ -40,6 +42,8 @@ export default function DynamicGraph({
     selectedEdge,
     hoveredEdge,
     setHoveredEdge,
+    hoveredNode,
+    setHoveredNode,
     setDrawerOpen,
     drawerOpen,
     onFunctionalitySelect,
@@ -447,58 +451,86 @@ export default function DynamicGraph({
             </>
           ) : selectedFunction === "toden-e" ? (
             <>
-              {umapCoords.length > 0 && todenEClusters && todenEClusters.sortedNodes ? (
-                (() => {
-                  // Calculate average (mean) of UMAP coordinates
-                  const avg = umapCoords.reduce(
-                    (acc, [x, y]) => [acc[0] + x, acc[1] + y],
-                    [0, 0]
-                  );
-                  const avgCoord: [number, number] = [
-                    avg[0] / umapCoords.length,
-                    avg[1] / umapCoords.length,
-                  ];
-                  const scaleFactor = 75; // adjust this factor as needed
-
-                  return umapCoords.map((coord, index) => {
-                    const sortedNodes: string[] = todenEClusters.sortedNodes;
-                    const nodeId = sortedNodes[index];
-                    // Determine cluster index for this node
-                    let clusterIndex = -1;
-                    if (todenEClusters.clusters && Array.isArray(todenEClusters.clusters)) {
-                      for (let i = 0; i < todenEClusters.clusters.length; i++) {
-                        if (todenEClusters.clusters[i].includes(nodeId)) {
-                          clusterIndex = i;
-                          break;
-                        }
-                      }
-                    }
-                    const clusterColors = ["red", "green", "blue", "orange", "purple", "cyan", "magenta", "yellow"];
-                    const color = clusterIndex >= 0 ? clusterColors[clusterIndex % clusterColors.length] : "red";
-
-                    return (
-                      <Button
-                        key={index}
-                        style={{
-                          position: "absolute",
-                          // Shift coordinates by subtracting avgCoord and then adding half of container dimensions
-                          left: `${(coord[0] - avgCoord[0]) * scaleFactor + dimensions!.width / 2}px`,
-                          top: `${(coord[1] - avgCoord[1]) * scaleFactor + dimensions!.height / 2}px`,
-                          backgroundColor: color,
-                          width: "20px",
-                          height: "20px",
-                          padding: 0,
-                        }}
-                        className="border-2 border-black"
-                        title={`Node ${nodeId}`}
-                      />
-                    );
-                  });
-                })()
-              ) : (
-                <div className="text-white">Loading visualization...</div>
-              )}
-            </>
+  {umapCoords.length > 0 && todenEClusters && todenEClusters.sortedNodes ? (
+    (() => {
+      const margin = 100;
+      const { width, height } = dimensions!;
+      
+      // Calculate bounding box of the UMAP coordinates
+      const xs = umapCoords.map(([x, _]) => x);
+      const ys = umapCoords.map(([_, y]) => y);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      
+      const bboxWidth = maxX - minX;
+      const bboxHeight = maxY - minY;
+      
+      // Determine available drawing area after subtracting margins
+      const availableWidth = width - 2 * margin;
+      const availableHeight = height - 2 * margin;
+      
+      // Compute a new scale factor to fit the bounding box in the available area
+      const newScaleFactor = Math.min(availableWidth / bboxWidth, availableHeight / bboxHeight);
+      
+      // Compute offsets so that the scaled bounding box is centered with a margin
+      const offsetX = margin + (availableWidth - bboxWidth * newScaleFactor) / 2 - newScaleFactor * minX;
+      const offsetY = margin + (availableHeight - bboxHeight * newScaleFactor) / 2 - newScaleFactor * minY;
+      
+      return umapCoords.map((coord, index) => {
+        const sortedNodes: string[] = todenEClusters.sortedNodes;
+        const nodeId = sortedNodes[index];
+        // Determine cluster index for this node
+        let clusterIndex = -1;
+        if (todenEClusters.clusters && Array.isArray(todenEClusters.clusters)) {
+          for (let i = 0; i < todenEClusters.clusters.length; i++) {
+            if (todenEClusters.clusters[i].includes(nodeId)) {
+              clusterIndex = i;
+              break;
+            }
+          }
+        }
+        const clusterColors = ["red", "green", "blue", "orange", "purple", "cyan", "magenta", "yellow"];
+        const color = clusterIndex >= 0 ? clusterColors[clusterIndex % clusterColors.length] : "red";
+  
+        const borderStyle = hoveredNode === nodeId ? "3px solid white" : "2px solid black";
+  
+        // Transform the original coordinate using our new scale factor and offsets
+        const xPos = coord[0] * newScaleFactor + offsetX;
+        const yPos = coord[1] * newScaleFactor + offsetY;
+  
+        return (
+          <TooltipProvider key={index}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  style={{
+                    position: "absolute",
+                    left: `${xPos}px`,
+                    top: `${yPos}px`,
+                    backgroundColor: color,
+                    width: "20px",
+                    height: "20px",
+                    padding: 0,
+                    border: borderStyle,
+                    borderRadius: "50%",
+                  }}
+                  onMouseEnter={() => setHoveredNode(nodeId)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                  title={`Node ${nodeId}`}
+                />
+              </TooltipTrigger>
+              <TooltipContent>{nodeId}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      });
+    })()
+  ) : (
+    <div className="text-white">Loading visualization...</div>
+  )}
+</>
           ) : null
         )}
       </div>

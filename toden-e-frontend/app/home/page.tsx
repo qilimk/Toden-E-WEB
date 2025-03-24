@@ -32,6 +32,7 @@ export default function HomePage() {
   const [selectedMatrix, setSelectedMatrix] = useState<string>("adj");
   const [prevView, setPrevView] = useState<string>("graph");
   const [todenEClusters, setTodenEClusters] = useState<any>(null);
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
   async function handleFileSelect(file: string) {
     const formData = new FormData();
@@ -118,6 +119,7 @@ export default function HomePage() {
                   setSelectedEdge={setSelectedEdge}
                   hoveredEdge={hoveredEdge}
                   setHoveredEdge={setHoveredEdge}
+                  setHoveredNode={setHoveredNode}
                   selectedMatrix={selectedMatrix}
                   setSelectedMatrix={setSelectedMatrix}
                   todenEClusters={todenEClusters}
@@ -137,6 +139,8 @@ export default function HomePage() {
                 selectedEdge={selectedEdge}
                 hoveredEdge={hoveredEdge}
                 setHoveredEdge={setHoveredEdge}
+                hoveredNode={hoveredNode}
+                setHoveredNode={setHoveredNode}
                 setDrawerOpen={setDrawerOpen}
                 drawerOpen={drawerOpen}
                 onFunctionalitySelect={handleGoToTabs}
@@ -168,6 +172,7 @@ export default function HomePage() {
                               setSelectedEdge={setSelectedEdge}
                               hoveredEdge={hoveredEdge}
                               setHoveredEdge={setHoveredEdge}
+                              setHoveredNode={setHoveredNode}
                               selectedMatrix={selectedMatrix}
                               setSelectedMatrix={setSelectedMatrix}
                               todenEClusters={todenEClusters}

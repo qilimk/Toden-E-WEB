@@ -58,6 +58,7 @@ interface AppSidebarProps {
   setSelectedEdge: (edge: Edge) => void;
   hoveredEdge: string | null;
   setHoveredEdge: (edge: string | null) => void;
+  setHoveredNode: (node: string | null) => void;
   selectedMatrix: string;
   setSelectedMatrix: (matrix: string) => void;
   todenEClusters: { clusters: string[][]; sortedNodes: string[] } | null;
@@ -78,6 +79,7 @@ export default function AppSidebar({
     setSelectedEdge,
     hoveredEdge,
     setHoveredEdge,
+    setHoveredNode,
     selectedMatrix,
     setSelectedMatrix,
     todenEClusters,
@@ -180,9 +182,32 @@ export default function AppSidebar({
                   <CardTitle>Toden-E Clustering</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-row">
-                    {/* Insert your Toden-E specific clustering content here */}
+                {selectedFunction === "toden-e" && todenEClusters && todenEClusters.clusters.length > 0 && (
+                  <div className="space-y-4">
+                    {todenEClusters.clusters.map((cluster, clusterIndex) => (
+                      <Table key={clusterIndex} className="w-full">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Cluster {clusterIndex + 1}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {cluster.map((node, nodeIndex) => (
+                            <TableRow 
+                              key={nodeIndex} 
+                              className="cursor-pointer hover:bg-muted" 
+                              // onClick={() => setSelectedNode(node)}
+                              onMouseEnter={() => setHoveredNode(node)}
+                              onMouseLeave={() => setHoveredNode(null)}
+                            >
+                              <TableCell>{node}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ))}
                   </div>
+                )}
                 </CardContent>
               </Card>
             ) : selectedFunction === "CoCo" ? (
