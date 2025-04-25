@@ -25,21 +25,7 @@ const PredictFormSchema = z
     file: z.string().optional(),
     fileUpload: z.any().optional(),
     alpha: z.string().nonempty({ message: "Alpha value is required." }),
-    visualize: z
-      .string()
-      .nonempty({ message: "Please select Yes or No for visualize." })
-      .refine(
-        (val) => val === "yes" || val === "no",
-        { message: "Please select Yes or No for visualize." }
-      ),
     clusters: z.string().nonempty({ message: "Please select the number of clusters." }),
-    summarize: z
-      .string()
-      .nonempty({ message: "Please select Yes or No for summarize." })
-      .refine(
-        (val) => val === "yes" || val === "no",
-        { message: "Please select Yes or No for summarize." }
-      ),
   })
   // Ensure at least one of file or fileUpload is provided
   .refine(
@@ -119,9 +105,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
       file: "",
       fileUpload: "",
       alpha: "0.5",
-      visualize: undefined,
       clusters: "",
-      summarize: undefined,
     },
   });
 
@@ -159,9 +143,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     }
     
     formData.append('alpha', data.alpha || '');
-    formData.append('visualize', data.visualize || '');
     formData.append('clusters', data.clusters || '');
-    formData.append('summarize', data.summarize || '');
 
     PredictForm.reset();
 
@@ -406,12 +388,10 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                         )}
                       />
                     </div>
-                  </div>
 
                   {/* Row 2: Alpha, Visualize, and Clusters (each spanning 1 column) */}
-                  <div className="grid grid-cols-8 gap-4 items-center">
                     <FormLabel className="text-right">Alpha</FormLabel>
-                    <div className="col-span-5">
+                    <div className="col-span-4">
                       <FormField
                         control={PredictForm.control}
                         name="alpha"
@@ -435,32 +415,6 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                         )}
                       />
                     </div>
-                    <div className="text-center col-span-1">
-                      <span>Visualize?</span>
-                    </div>
-                    <div className="col-span-1">
-                      <FormField
-                        control={PredictForm.control}
-                        name="visualize"
-                        render={({ field }) => (
-                          <FormControl>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Yes/No" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  <SelectItem value="yes">Yes</SelectItem>
-                                  <SelectItem value="no">No</SelectItem>
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                        )}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-8 gap-4 items-center">
                     <FormLabel className="text-right">Clusters</FormLabel>
                     <div className="col-span-2">
                       <FormField
@@ -479,28 +433,6 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                                   <SelectItem value="3">3</SelectItem>
                                   <SelectItem value="4">4</SelectItem>
                                   <SelectItem value="5">5</SelectItem>
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                        )}
-                      />
-                    </div>
-                    <FormLabel className="text-right">Summarize</FormLabel>
-                    <div className="col-span-1">
-                      <FormField
-                        control={PredictForm.control}
-                        name="summarize"
-                        render={({ field }) => (
-                          <FormControl>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Yes/No" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  <SelectItem value="yes">Yes</SelectItem>
-                                  <SelectItem value="no">No</SelectItem>
                                 </SelectGroup>
                               </SelectContent>
                             </Select>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Tabs,
   TabsContent,
@@ -31,7 +32,6 @@ import {
     TableBody,
     TableCaption,
     TableCell,
-    TableFooter,
     TableHead,
     TableHeader,
     TableRow,
@@ -39,9 +39,9 @@ import {
 import { NodeCombobox } from "@/components/NodeCombobox";
 import { EdgeCombobox } from "@/components/EdgeCombobox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Download } from "lucide-react";
 
 import { Edge } from "@/types/edge";
-import { Scroll } from "lucide-react";
 
 interface AppSidebarProps {
   nodes: { value: string; label: string }[];
@@ -62,6 +62,7 @@ interface AppSidebarProps {
   selectedMatrix: string;
   setSelectedMatrix: (matrix: string) => void;
   todenEClusters: { clusters: string[][]; sortedNodes: string[] } | null;
+  matrixDims: number[] | null;
 }
 
 export default function AppSidebar({ 
@@ -83,6 +84,7 @@ export default function AppSidebar({
     selectedMatrix,
     setSelectedMatrix,
     todenEClusters,
+    matrixDims,
   }: AppSidebarProps) {
 
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -172,11 +174,13 @@ export default function AppSidebar({
                     </div>
                 </div>
               </CardContent>
-              <CardFooter className="text-muted-foreground sm:text-sm">
-                *CoCo clustering is same for all files.
-              </CardFooter>
+              {selectedFunction === "CoCo" ? (
+                <CardFooter className="text-muted-foreground sm:text-sm">
+                  *CoCo clustering is same for all files.
+                </CardFooter>
+              ) : (null)}
             </Card>
-            {selectedFunction === "toden-e" ? (
+            {selectedFunction === "toden-e" && todenEClusters ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Toden-E Clustering</CardTitle>
@@ -210,7 +214,7 @@ export default function AppSidebar({
                 )}
                 </CardContent>
               </Card>
-            ) : selectedFunction === "CoCo" ? (
+            ) : selectedFunction === "CoCo" && selectedFile !== "" ? (
               <>
                 <Card>
                   <CardHeader>
@@ -261,7 +265,7 @@ export default function AppSidebar({
                 <Card>
                   <CardHeader>
                     <CardTitle>
-                      {selectedNode} Information
+                      {selectedNode} Relationships
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -363,19 +367,39 @@ export default function AppSidebar({
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Matrix Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-2">
-                  <Label className="col-span-1">Dimensions</Label>
-                  <p className="col-span-2">Put Dimensions here</p>
-                </div>
-              </CardContent>
-            </Card>
+            {selectedFile !== "" ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      Matrix Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-2">
+                      <p className="col-span-1">Dimensions</p>
+                      { matrixDims ? (
+                        <p className="col-span-2 text-center">{matrixDims[0]} x {matrixDims[1]}</p>
+                      ) : (<p className="col-span-2">Select a matrix to load.</p>)
+                    }
+                    </div>
+                  </CardContent>
+                  <CardFooter className="">
+                    <Button className="col-span-2 underline underline-offset-2" variant="ghost"> Download as CSV </Button>
+                  </CardFooter>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      Other
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    Talk to Qi about what he wants.
+                  </CardContent>
+                </Card>
+              </>
+            ) : (null)}
           </TabsContent>
         </Tabs>
         </ScrollArea>

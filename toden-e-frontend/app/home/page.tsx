@@ -33,6 +33,7 @@ export default function HomePage() {
   const [prevView, setPrevView] = useState<string>("graph");
   const [todenEClusters, setTodenEClusters] = useState<any>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [matrixDims, setMatrixDims] = useState<number[] | null>(null);
 
   async function handleFileSelect(file: string) {
     const formData = new FormData();
@@ -123,6 +124,7 @@ export default function HomePage() {
                   selectedMatrix={selectedMatrix}
                   setSelectedMatrix={setSelectedMatrix}
                   todenEClusters={todenEClusters}
+                  matrixDims={matrixDims}
                 />
             }
             <div className="flex flex-1 flex-col">
@@ -176,6 +178,7 @@ export default function HomePage() {
                               selectedMatrix={selectedMatrix}
                               setSelectedMatrix={setSelectedMatrix}
                               todenEClusters={todenEClusters}
+                              matrixDims={matrixDims}
                             />
             }
             <MatrixVisualization 
@@ -185,6 +188,7 @@ export default function HomePage() {
               view={view}
               selectedMatrix={selectedMatrix}
               onFunctionalitySelect={handleGoToTabs}
+              setMatrixDims={setMatrixDims}
             />
           </div>
         ) : (null)}

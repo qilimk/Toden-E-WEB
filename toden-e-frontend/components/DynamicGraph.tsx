@@ -1,11 +1,20 @@
 "use client";
 
 import React, { useMemo, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Plus, Minus, TableOfContents, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Minus, TableOfContents, ChevronUp, ChevronDown, Maximize, Minimize } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Edge } from "@/types/edge";
 import { UMAP } from "umap-js";
+import seedrandom from "seedrandom";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 interface DynamicGraphProps {
   clustersData: { clusters: string[] } | null;
@@ -56,6 +65,7 @@ export default function DynamicGraph({
   const [cocoData, setCocoData] = useState<any>(null);
   const [umapCoords, setUmapCoords] = useState<number[][]>([]);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [nodeCardOpen, setNodeCardOpen] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
@@ -154,7 +164,8 @@ export default function DynamicGraph({
       // Convert matrix strings to numbers
       const conMatrix = data.matrix.map((row: string[]) => row.map(cell => parseFloat(cell)));
       // Compute 2D coordinates with UMAP
-      const umap = new UMAP({ nComponents: 2, nNeighbors: 15, minDist: 0.1 });
+      const rng = seedrandom("toden-e-layout-v1");
+      const umap = new UMAP({ nComponents: 2, nNeighbors: 15, minDist: 0.1, random: rng });
       const coords = umap.fit(conMatrix);
       console.log("Computed UMAP coordinates:", coords);
       setUmapCoords(coords);
@@ -194,19 +205,11 @@ export default function DynamicGraph({
       fetchConMatrixAndComputeUMAP();
       fetchTodenEClusters();
     }
-  }, [view, selectedFunction, selectedNode, selectedFile, clustersData]);
-
-  const getClusterIndexForNode = (nodeId: string): number => {
-    if (!todenEClusters || !todenEClusters.clusters) return -1;
-    for (let i = 0; i < todenEClusters.clusters.length; i++) {
-      if (todenEClusters.clusters[i].includes(nodeId)) {
-        return i;
-      }
+    else if (selectedFunction === "toden-e-2") {
+      //fetchConMatrixAndComputeUMAP();
+      // fetchTodenEClusters();
     }
-    return -1;
-  };
-
-  const clusterColors = ["red", "green", "blue", "orange", "purple", "cyan", "magenta", "yellow"];
+  }, [view, selectedFunction, selectedNode, selectedFile, clustersData]);
 
   const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
 
@@ -232,6 +235,15 @@ export default function DynamicGraph({
     }
     setOffset(newOffset);
     lastPosRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const openNodeCard = () => {
+    setNodeCardOpen((prev: boolean) => !prev)
+    populateNodeDetails()
+  };
+
+  const populateNodeDetails = () => {
+    console.log("Create API call to populate node details.")
   };
 
   const handleMouseUp = () => {
@@ -451,98 +463,139 @@ export default function DynamicGraph({
             </>
           ) : selectedFunction === "toden-e" ? (
             <>
-  {umapCoords.length > 0 && todenEClusters && todenEClusters.sortedNodes ? (
-    (() => {
-      const margin = 100;
-      const { width, height } = dimensions!;
-      
-      // Calculate bounding box of the UMAP coordinates
-      const xs = umapCoords.map(([x, _]) => x);
-      const ys = umapCoords.map(([_, y]) => y);
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-      
-      const bboxWidth = maxX - minX;
-      const bboxHeight = maxY - minY;
-      
-      // Determine available drawing area after subtracting margins
-      const availableWidth = width - 2 * margin;
-      const availableHeight = height - 2 * margin;
-      
-      // Compute a new scale factor to fit the bounding box in the available area
-      const newScaleFactor = Math.min(availableWidth / bboxWidth, availableHeight / bboxHeight);
-      
-      // Compute offsets so that the scaled bounding box is centered with a margin
-      const offsetX = margin + (availableWidth - bboxWidth * newScaleFactor) / 2 - newScaleFactor * minX;
-      const offsetY = margin + (availableHeight - bboxHeight * newScaleFactor) / 2 - newScaleFactor * minY;
-      
-      return umapCoords.map((coord, index) => {
-        const sortedNodes: string[] = todenEClusters.sortedNodes;
-        const nodeId = sortedNodes[index];
-        // Determine cluster index for this node
-        let clusterIndex = -1;
-        if (todenEClusters.clusters && Array.isArray(todenEClusters.clusters)) {
-          for (let i = 0; i < todenEClusters.clusters.length; i++) {
-            if (todenEClusters.clusters[i].includes(nodeId)) {
-              clusterIndex = i;
-              break;
-            }
-          }
-        }
-        const clusterColors = ["red", "green", "blue", "orange", "purple", "cyan", "magenta", "yellow"];
-        const color = clusterIndex >= 0 ? clusterColors[clusterIndex % clusterColors.length] : "red";
-  
-        const borderStyle = hoveredNode === nodeId ? "3px solid white" : "2px solid black";
-  
-        // Transform the original coordinate using our new scale factor and offsets
-        const xPos = coord[0] * newScaleFactor + offsetX;
-        const yPos = coord[1] * newScaleFactor + offsetY;
-  
-        return (
-          <TooltipProvider key={index}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  style={{
-                    position: "absolute",
-                    left: `${xPos}px`,
-                    top: `${yPos}px`,
-                    backgroundColor: color,
-                    width: "20px",
-                    height: "20px",
-                    padding: 0,
-                    border: borderStyle,
-                    borderRadius: "50%",
-                  }}
-                  onMouseEnter={() => setHoveredNode(nodeId)}
-                  onMouseLeave={() => setHoveredNode(null)}
-                  title={`Node ${nodeId}`}
-                />
-              </TooltipTrigger>
-              <TooltipContent>{nodeId}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      });
-    })()
-  ) : (
-    <div className="text-white">Loading visualization...</div>
-  )}
-</>
-          ) : null
+              {umapCoords.length > 0 && todenEClusters && todenEClusters.sortedNodes ? (
+                (() => {
+                  const margin = 100;
+                  const { width, height } = dimensions!;
+                  
+                  // Calculate bounding box of the UMAP coordinates
+                  const xs = umapCoords.map(([x, _]) => x);
+                  const ys = umapCoords.map(([_, y]) => y);
+                  const minX = Math.min(...xs);
+                  const maxX = Math.max(...xs);
+                  const minY = Math.min(...ys);
+                  const maxY = Math.max(...ys);
+                  
+                  const bboxWidth = maxX - minX;
+                  const bboxHeight = maxY - minY;
+                  
+                  // Determine available drawing area after subtracting margins
+                  const availableWidth = width - 2 * margin;
+                  const availableHeight = height - 2 * margin;
+                  
+                  // Compute a new scale factor to fit the bounding box in the available area
+                  const newScaleFactor = Math.min(availableWidth / bboxWidth, availableHeight / bboxHeight);
+                  
+                  // Compute offsets so that the scaled bounding box is centered with a margin
+                  const offsetX = margin + (availableWidth - bboxWidth * newScaleFactor) / 2 - newScaleFactor * minX;
+                  const offsetY = margin + (availableHeight - bboxHeight * newScaleFactor) / 2 - newScaleFactor * minY;
+                  
+                  return umapCoords.map((coord, index) => {
+                    const sortedNodes: string[] = todenEClusters.sortedNodes;
+                    const nodeId = sortedNodes[index];
+                    // Determine cluster index for this node
+                    let clusterIndex = -1;
+                    if (todenEClusters.clusters && Array.isArray(todenEClusters.clusters)) {
+                      for (let i = 0; i < todenEClusters.clusters.length; i++) {
+                        if (todenEClusters.clusters[i].includes(nodeId)) {
+                          clusterIndex = i;
+                          break;
+                        }
+                      }
+                    }
+                    const clusterColors = ["red", "green", "blue", "orange", "purple", "cyan", "magenta", "yellow"];
+                    const color = clusterIndex >= 0 ? clusterColors[clusterIndex % clusterColors.length] : "red";
+
+                    const isActive = hoveredNode === nodeId || selectedNode === nodeId;
+
+                    const borderStyle = isActive ? "3px solid white" : "2px solid black";
+              
+                    // Transform the original coordinate using our new scale factor and offsets
+                    const xPos = coord[0] * newScaleFactor + offsetX;
+                    const yPos = coord[1] * newScaleFactor + offsetY;
+              
+                    return (
+                      <TooltipProvider key={index}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              style={{
+                                position: "absolute",
+                                left: `${xPos}px`,
+                                top: `${yPos}px`,
+                                backgroundColor: color,
+                                width: "20px",
+                                height: "20px",
+                                padding: 0,
+                                border: borderStyle,
+                                borderRadius: "50%",
+                              }}
+                              onMouseEnter={() => setHoveredNode(nodeId)}
+                              onMouseLeave={() => setHoveredNode(null)}
+                              onClick={() => setSelectedNode(nodeId)}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>{nodeId}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  });
+                })()
+              ) : (
+                <div className="text-white">Loading visualization...</div>
+              )}
+            </>
+          ) : selectedFunction === "toden-e-2" ? (
+            null
+          ) : ( null )
         )}
       </div>
 
       {/* Zoom Controls (outside the transformed container) */}
-      <div className="absolute top-4 right-4 flex flex-col space-y-2">
+      <div className="absolute top-4 right-4 flex flex-col items-end space-y-2">
         <Button onClick={handleZoomIn} variant="outline" disabled={scale >= 5.0} className="p-2 rounded-full">
           <Plus />
         </Button>
         <Button onClick={handleZoomOut} variant="outline" disabled={scale <= 1} className="p-2 rounded-full">
           <Minus />
         </Button>
+        {nodeCardOpen ? (
+          <>
+            <Button onClick={openNodeCard} variant="outline" className="p-2 rounded-full">
+              <Minimize />
+            </Button>
+            {selectedNode ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Node {selectedNode} Details</CardTitle>
+                  <CardDescription>Here are the relevant PAGER details for node {selectedNode}.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-2">
+                    <p className="col-span-1">Name:</p>
+                    <p className="col-span-2">Filler</p>
+                    <p className="col-span-1">Organism:</p>
+                    <p className="col-span-2">Filler</p>
+                    <p className="col-span-1">Description:</p>
+                    <p className="col-span-2 row-span-2">Filler</p>
+                    <Button className="col-span-1 underline underline-offset-2" variant="ghost">Go To</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Please select a Node.</CardTitle>
+                </CardHeader>
+              </Card>
+            )}
+            
+          </>
+          ) : (
+            <Button onClick={openNodeCard} variant="outline" className="p-2 rounded-full">
+              <Maximize />
+            </Button>
+          )}
       </div>
     </div>
   );

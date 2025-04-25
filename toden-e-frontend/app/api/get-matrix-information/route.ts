@@ -33,9 +33,10 @@ export async function GET(request: Request) {
     // Parse each row by splitting at commas.
     // You can adjust this if your CSV uses quotes or a different separator.
     const matrix = rows.map(row => row.split(','));
+    const dims = [matrix.length, matrix[0].length]
 
     // Return the matrix as JSON
-    return NextResponse.json({ matrix });
+    return NextResponse.json({ matrix, dims });
   } catch (error) {
     console.error('Error reading matrix file:', error);
     return NextResponse.json(

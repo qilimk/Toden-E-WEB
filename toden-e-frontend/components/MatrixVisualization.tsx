@@ -14,6 +14,7 @@ interface MatrixVisualizationProps {
   view: string;
   selectedMatrix: string;
   onFunctionalitySelect: () => void;
+  setMatrixDims: (dimensions: number[] | null) => void;
 }
 
 export default function MatrixVisualization({ 
@@ -23,6 +24,7 @@ export default function MatrixVisualization({
   view,
   selectedMatrix,
   onFunctionalitySelect,
+  setMatrixDims,
 }: MatrixVisualizationProps) {
 
   const [matrix, setMatrix] = useState<string[][]>([]);
@@ -43,6 +45,7 @@ export default function MatrixVisualization({
         const data = await response.json();
         console.log("Fetched matrix:", data.matrix);
         setMatrix(data.matrix);
+        setMatrixDims(data.dims);
       } catch (error) {
         console.error("Error fetching matrix:", error);
       }
@@ -70,30 +73,35 @@ export default function MatrixVisualization({
           Select Functionality
         </Button>
       </div>
-      {/* Wrap the grid in AutoSizer to make it flex */}
-      <div className="mt-16 flex-1 p-2">
-        <AutoSizer>
-          {({ height, width }) => (
-            <Grid
-              columnCount={columnCount}
-              columnWidth={columnWidth}
-              height={height}
-              rowCount={rowCount}
-              rowHeight={rowHeight}
-              width={width}
-            >
-              {// @ts-ignore
-                ({ columnIndex, rowIndex, style }) => (
-                <div style={style} className="border p-1 whitespace-nowrap">
-                  {isNaN(Number(matrix[rowIndex][columnIndex]))
-                    ? matrix[rowIndex][columnIndex]
-                    : Number(matrix[rowIndex][columnIndex]).toFixed(5)}
-                </div>
-              )}
-            </Grid>
-          )}
-        </AutoSizer>
-      </div>
+      {selectedFile !== "" ? (
+        <div className="mt-16 flex-1 p-2">
+          <AutoSizer>
+            {({ height, width }) => (
+              <Grid
+                columnCount={columnCount}
+                columnWidth={columnWidth}
+                height={height}
+                rowCount={rowCount}
+                rowHeight={rowHeight}
+                width={width}
+              >
+                {// @ts-ignore
+                  ({ columnIndex, rowIndex, style }) => (
+                  <div style={style} className="border p-1 whitespace-nowrap">
+                    {isNaN(Number(matrix[rowIndex][columnIndex]))
+                      ? matrix[rowIndex][columnIndex]
+                      : Number(matrix[rowIndex][columnIndex]).toFixed(5)}
+                  </div>
+                )}
+              </Grid>
+            )}
+          </AutoSizer>
+        </div>
+      ) : (
+        <div className="flex flex-1 items-center justify-center font-semibold text-xl">
+          Choose a file to view matrix.
+        </div>
+      )}
     </div>
   );
 }
