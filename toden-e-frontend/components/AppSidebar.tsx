@@ -63,6 +63,7 @@ interface AppSidebarProps {
   setSelectedMatrix: (matrix: string) => void;
   todenEClusters: { clusters: string[][]; sortedNodes: string[] } | null;
   matrixDims: number[] | null;
+  setHoveredCluster: (cluster: string[] | null) => void;
 }
 
 export default function AppSidebar({ 
@@ -85,11 +86,13 @@ export default function AppSidebar({
     setSelectedMatrix,
     todenEClusters,
     matrixDims,
+    setHoveredCluster
   }: AppSidebarProps) {
 
   const [edges, setEdges] = useState<Edge[]>([]);
 
   useEffect(() => {
+    if (selectedFunction == "toden-e") return;
     if (selectedNode && selectedFile) {
       fetch("/api/get-edge-information", {
         method: "POST",
@@ -192,7 +195,12 @@ export default function AppSidebar({
                       <Table key={clusterIndex} className="w-full">
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Cluster {clusterIndex + 1}</TableHead>
+                            <TableHead
+                              onMouseEnter={() => setHoveredCluster(cluster)}
+                              onMouseLeave={() => setHoveredCluster(null)}
+                            >
+                              Cluster {clusterIndex + 1}
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -200,7 +208,7 @@ export default function AppSidebar({
                             <TableRow 
                               key={nodeIndex} 
                               className="cursor-pointer hover:bg-muted" 
-                              // onClick={() => setSelectedNode(node)}
+                              onClick={() => setSelectedNode(node)}
                               onMouseEnter={() => setHoveredNode(node)}
                               onMouseLeave={() => setHoveredNode(null)}
                             >

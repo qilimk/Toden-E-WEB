@@ -36,6 +36,7 @@ interface DynamicGraphProps {
   onFunctionalitySelect: () => void;
   setTodenEClusters: (clusters: { clusters: string[][]; sortedNodes: string[] } | null) => void;
   todenEClusters: { clusters: string[][]; sortedNodes: string[] } | null;
+  hoveredCluster: string[] | null;
 }
 
 export default function DynamicGraph({ 
@@ -58,6 +59,7 @@ export default function DynamicGraph({
     onFunctionalitySelect,
     setTodenEClusters,
     todenEClusters,
+    hoveredCluster,
   }: DynamicGraphProps) {
 
   const [scale, setScale] = useState(1);
@@ -66,6 +68,13 @@ export default function DynamicGraph({
   const [umapCoords, setUmapCoords] = useState<number[][]>([]);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [nodeCardOpen, setNodeCardOpen] = useState<boolean>(false);
+  const [nodeDetails, setNodeDetails] = useState<{
+    name: string;
+    organism: string;
+    size: string;
+    link: string;
+    description: string;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
@@ -122,31 +131,31 @@ export default function DynamicGraph({
       console.error("Error fetching CoCo visualization data:", error);
     }
   };
+
+  useEffect(() => {
+    const fetchNodeDetails = async () => {
+      if (!selectedNode || selectedFunction !== "toden-e") {
+        setNodeDetails(null);
+        return;
+      }
   
-  // const fetchTodenEData = async () => {
-  //   try {
-  //     const allowedNodes = clustersData
-  //       ? clustersData.clusters
-  //           .flatMap((cluster) => cluster.split(",").map((n) => n.trim()))
-  //           .filter((n) => n !== "")
-  //       : [];
-  //     const response = await fetch("/api/get-toden-e-visualization", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({ node: selectedNode, allowedNodes, fileName: selectedFile }),
-  //     });
-  //     if (!response.ok) {
-  //       const text = await response.text();
-  //       console.error("Error response:", text);
-  //       throw new Error("Error fetching Toden‑E data");
-  //     }
-  //     const data = await response.json();
-  //     console.log("Toden‑E Data", data.results);
-  //     setTodenEData(data.results[0]);
-  //   } catch (error) {
-  //     console.error("Error fetching Toden‑E visualization data:", error);
-  //   }
-  // };
+      try {
+        const res = await fetch(`/api/get-node-information?goid=${encodeURIComponent(selectedNode)}`);
+        if (!res.ok) {
+          console.warn(`No node data found for GOID: ${selectedNode}`);
+          setNodeDetails(null);
+          return;
+        }
+        const data = await res.json();
+        setNodeDetails(data);
+      } catch (error) {
+        console.error("Error fetching node details:", error);
+        setNodeDetails(null);
+      }
+    };
+  
+    fetchNodeDetails();
+  }, [selectedNode, selectedFunction]);
 
   const fetchConMatrixAndComputeUMAP = async () => {
     if (!selectedFile) return;
@@ -343,7 +352,7 @@ export default function DynamicGraph({
           No graph data available
         </div>
       )}
-      <div className="flex absolute top-4 left-4 z-10 items-center space-x-1">
+      <div className="flex absolute top-4 left-4 z-10 items-start space-x-1">
         <Button
           // @ts-ignore
             onClick={() => setSidebarOpen((prev: boolean) => !prev)}
@@ -357,6 +366,25 @@ export default function DynamicGraph({
           >
           Select Functionality
         </Button>
+        {selectedFunction === "toden-e" && todenEClusters && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Legend</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {todenEClusters.clusters?.map((_, idx) => {
+                const clusterColors = ["red", "green", "blue", "orange", "purple", "cyan", "magenta", "yellow"];
+                const color = clusterColors[idx % clusterColors.length];
+                return (
+                  <div key={idx} className="flex items-center space-x-2">
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: color }} />
+                    <span>Cluster {idx + 1}</span>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
       </div>
       <Button
         //@ts-ignore
@@ -506,7 +534,8 @@ export default function DynamicGraph({
                     const clusterColors = ["red", "green", "blue", "orange", "purple", "cyan", "magenta", "yellow"];
                     const color = clusterIndex >= 0 ? clusterColors[clusterIndex % clusterColors.length] : "red";
 
-                    const isActive = hoveredNode === nodeId || selectedNode === nodeId;
+                    const isInHoveredCluster = hoveredCluster?.includes(nodeId);
+                    const isActive = hoveredNode === nodeId || selectedNode === nodeId || isInHoveredCluster;
 
                     const borderStyle = isActive ? "3px solid white" : "2px solid black";
               
@@ -565,21 +594,42 @@ export default function DynamicGraph({
               <Minimize />
             </Button>
             {selectedNode ? (
-              <Card>
+              <Card style={{ maxWidth: `${(dimensions?.width ?? 1000) / 3}px`, width: "100%" }}>
                 <CardHeader>
                   <CardTitle>Node {selectedNode} Details</CardTitle>
-                  <CardDescription>Here are the relevant PAGER details for node {selectedNode}.</CardDescription>
+                  <CardDescription>
+                    Here are the relevant PAGER details for node {selectedNode}.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 gap-2">
-                    <p className="col-span-1">Name:</p>
-                    <p className="col-span-2">Filler</p>
-                    <p className="col-span-1">Organism:</p>
-                    <p className="col-span-2">Filler</p>
-                    <p className="col-span-1">Description:</p>
-                    <p className="col-span-2 row-span-2">Filler</p>
-                    <Button className="col-span-1 underline underline-offset-2" variant="ghost">Go To</Button>
-                  </div>
+                  {nodeDetails ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      <p className="col-span-1 font-medium">Name:</p>
+                      <p className="col-span-2">{nodeDetails.name}</p>
+
+                      <p className="col-span-1 font-medium">Organism:</p>
+                      <p className="col-span-2">{nodeDetails.organism}</p>
+
+                      <p className="col-span-1 font-medium">Size:</p>
+                      <p className="col-span-2">{nodeDetails.size}</p>
+
+                      <p className="col-span-1 font-medium">Description:</p>
+                      <p className="col-span-2 row-span-2">{nodeDetails.description}</p>
+
+                      {/* {nodeDetails.link && (
+                        <a
+                          href={nodeDetails.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="col-span-3 text-blue-600 hover:underline text-sm mt-2"
+                        >
+                          Go To Link
+                        </a>
+                      )} */}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">Loading or no details found.</p>
+                  )}
                 </CardContent>
               </Card>
             ) : (

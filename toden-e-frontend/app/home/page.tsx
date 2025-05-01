@@ -34,6 +34,7 @@ export default function HomePage() {
   const [todenEClusters, setTodenEClusters] = useState<any>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [matrixDims, setMatrixDims] = useState<number[] | null>(null);
+  const [hoveredCluster, setHoveredCluster] = useState<string[] | null>(null);
 
   async function handleFileSelect(file: string) {
     const formData = new FormData();
@@ -125,6 +126,7 @@ export default function HomePage() {
                   setSelectedMatrix={setSelectedMatrix}
                   todenEClusters={todenEClusters}
                   matrixDims={matrixDims}
+                  setHoveredCluster={setHoveredCluster}
                 />
             }
             <div className="flex flex-1 flex-col">
@@ -148,6 +150,7 @@ export default function HomePage() {
                 onFunctionalitySelect={handleGoToTabs}
                 setTodenEClusters={setTodenEClusters}
                 todenEClusters={todenEClusters}
+                hoveredCluster={hoveredCluster}
               />
               { drawerOpen &&
                 <SummaryDrawer 
@@ -179,6 +182,7 @@ export default function HomePage() {
                               setSelectedMatrix={setSelectedMatrix}
                               todenEClusters={todenEClusters}
                               matrixDims={matrixDims}
+                              setHoveredCluster={setHoveredCluster}
                             />
             }
             <MatrixVisualization 
