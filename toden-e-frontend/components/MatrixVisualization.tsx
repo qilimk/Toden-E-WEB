@@ -15,6 +15,8 @@ interface MatrixVisualizationProps {
   selectedMatrix: string;
   onFunctionalitySelect: () => void;
   setMatrixDims: (dimensions: number[] | null) => void;
+  matrix: string[][];
+  setMatrix: (matrix: string[][]) => void;
 }
 
 export default function MatrixVisualization({ 
@@ -25,9 +27,9 @@ export default function MatrixVisualization({
   selectedMatrix,
   onFunctionalitySelect,
   setMatrixDims,
+  matrix,
+  setMatrix
 }: MatrixVisualizationProps) {
-
-  const [matrix, setMatrix] = useState<string[][]>([]);
 
   useEffect(() => {
     if (view !== "matrix") return;

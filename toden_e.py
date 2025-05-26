@@ -1638,7 +1638,7 @@ def analyze_zoomin_outdegree(G_path='2024_biological_process_graph_w_verificatio
     return filtered_outdegrees
 
 
-def toden_e_predict(pags_txt_path = "Leukemia_drug_resistantVSsensitive.txt", alpha = 0.5, num_clusters=2, is_visualized=False, is_summary=False):
+def toden_e_predict(pags_txt_path = "Leukemia_drug_resistantVSsensitive.txt", alpha = 0.5, num_clusters=2):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Read gene names from a text file into a list
@@ -1655,10 +1655,8 @@ def toden_e_predict(pags_txt_path = "Leukemia_drug_resistantVSsensitive.txt", al
     
     print("Alpha:", alpha)
     print("Number of clusters:", num_clusters)
-    print("Visualize:", is_visualized)
-    print("Summary:", is_summary)
 
-    save_file_path = f"./toden-e-frontend/go_metadata/data/Leukemia_{num_clusters}_{alpha}.csv"
+    save_file_path = f"./toden-e-frontend/go_metadata/tmp/data/sessionID_{num_clusters}_{alpha}_custom.csv"
 
     clustering_algorithms = {'Agglomerative': AgglomerativeClustering(n_clusters=num_clusters),}
 
@@ -1684,8 +1682,8 @@ def toden_e_predict(pags_txt_path = "Leukemia_drug_resistantVSsensitive.txt", al
     adj_matrix = nx.to_numpy_array(G, nodelist=sorted_nodes_by_names)
     con_matrix = np.concatenate((alpha*pags_embeddings, (1-alpha)*adj_matrix), axis=1)
     
-    adj_csv_path = f"./toden-e-frontend/go_metadata/matrix/Leukemia_{num_clusters}_{alpha}_adj.csv"
-    con_csv_path = f"./toden-e-frontend/go_metadata/matrix/Leukemia_{num_clusters}_{alpha}_con.csv"
+    adj_csv_path = f"./toden-e-frontend/go_metadata/tmp/matrix/sessionID_{num_clusters}_{alpha}_adj.csv"
+    con_csv_path = f"./toden-e-frontend/go_metadata/tmp/matrix/sessionID_{num_clusters}_{alpha}_con.csv"
 
     # Convert the numpy arrays to DataFrames
     adj_df = pd.DataFrame(adj_matrix)
@@ -1708,11 +1706,11 @@ def toden_e_predict(pags_txt_path = "Leukemia_drug_resistantVSsensitive.txt", al
     df = pd.DataFrame.from_dict(results, orient='index').reset_index().rename(columns={'index': 'ID'})
     df.to_csv(save_file_path, index=False)
 
-    if is_visualized:
-        visualize_pred_results(pred_dict_path= save_file_path)
+    # if is_visualized:
+    #     visualize_pred_results(pred_dict_path= save_file_path)
 
-    if is_summary:
-        summarize_cluster_results(clusering_results_path= save_file_path)
+    # if is_summary:
+    #     summarize_cluster_results(clusering_results_path= save_file_path)
 
     # Modify this to return the csv as a downloadable file to the user so they can use the visualize and summarize functionality
     result = {

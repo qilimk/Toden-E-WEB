@@ -64,6 +64,7 @@ interface AppSidebarProps {
   todenEClusters: { clusters: string[][]; sortedNodes: string[] } | null;
   matrixDims: number[] | null;
   setHoveredCluster: (cluster: string[] | null) => void;
+  matrix: string[][];
 }
 
 export default function AppSidebar({ 
@@ -86,7 +87,8 @@ export default function AppSidebar({
     setSelectedMatrix,
     todenEClusters,
     matrixDims,
-    setHoveredCluster
+    setHoveredCluster,
+    matrix
   }: AppSidebarProps) {
 
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -114,6 +116,78 @@ export default function AppSidebar({
         });
     }
   }, [selectedNode, selectedFile]);
+
+  const handleDownloadCSV = async () => { // Make the handler async
+      if (!matrix || matrix.length === 0) {
+          alert("No matrix data available to download.");
+          return;
+      }
+
+      const currentFileName = `${selectedFile}_${selectedMatrix}.csv`;
+
+      const csvContent = matrix.map(row => {
+          return row.map(cell => {
+              const cellString = String(cell ?? '');
+              if (/[",\n]/.test(cellString)) {
+                  return `"${cellString.replace(/"/g, '""')}"`;
+              }
+              return cellString;
+          }).join(',');
+      }).join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+      // Call the saveData helper
+      await saveData(blob, currentFileName);
+  };
+
+  async function saveData(blob: Blob, suggestedName: string) {
+    try {
+      // Try the File System Access API
+      if (window.showSaveFilePicker) {
+        const options: SaveFilePickerOptions = {
+          suggestedName: suggestedName,
+          types: [{
+            description: 'CSV files',
+            accept: { 'text/csv': ['.csv'] },
+          }],
+        };
+        const fileHandle = await window.showSaveFilePicker(options);
+        const writableStream = await fileHandle.createWritable();
+        await writableStream.write(blob);
+        await writableStream.close();
+        return; // Success!
+      }
+      // If showSaveFilePicker is not available, an error will be caught below
+      // or we proceed to fallback if it simply wasn't defined.
+      // Throw an error to fall into the catch block for the fallback.
+      throw new Error('File System Access API not supported.');
+    } catch (err: any) {
+      // Handle errors: user cancellation, or API not supported.
+      if (err.name === 'AbortError') {
+        console.log('File save dialog was cancelled by the user.');
+        return;
+      }
+      console.warn('File System Access API failed or not supported, falling back to legacy download:', err.message);
+
+      // Fallback for browsers that don't support showSaveFilePicker or if it fails
+      const link = document.createElement('a');
+      if (typeof link.download === 'string') {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', suggestedName); // This still suggests a name
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else if (window.navigator.msSaveBlob) { // IE 10+ support
+        window.navigator.msSaveBlob(blob, suggestedName);
+      } else {
+        alert("CSV download is not fully supported in your browser, or the operation was cancelled.");
+      }
+    }
+  }
 
   return (
     <div className="flex flex-row">
@@ -393,18 +467,14 @@ export default function AppSidebar({
                     </div>
                   </CardContent>
                   <CardFooter className="">
-                    <Button className="col-span-2 underline underline-offset-2" variant="ghost"> Download as CSV </Button>
+                    <Button 
+                      className="col-span-2 underline underline-offset-2" 
+                      variant="ghost"
+                      onClick={handleDownloadCSV}
+                    > 
+                      Download as CSV 
+                    </Button>
                   </CardFooter>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>
-                      Other
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    Talk to Qi about what he wants.
-                  </CardContent>
                 </Card>
               </>
             ) : (null)}

@@ -207,6 +207,11 @@ export default function DynamicGraph({
   useEffect(() => {
     if (view !== "graph") return;
     if (!selectedNode || !selectedFile) return;
+    if (selectedFile == "custom") {
+      setCocoData(null);
+      setTodenEClusters(null);
+      return;
+    }  
   
     if (selectedFunction === "CoCo") {
       fetchCocoData();
@@ -386,14 +391,14 @@ export default function DynamicGraph({
           </Card>
         )}
       </div>
-      <Button
+      {/* <Button
         //@ts-ignore
           onClick={() => setDrawerOpen(prev => !prev)}
           className="absolute bottom-4 right-4 z-10"
           variant="outline"
         >
         {drawerOpen ? <ChevronDown /> : <ChevronUp />}
-      </Button>
+      </Button> */}
       {/* Transformed Container: Background and Graph Content Scale Together */}
       <div
         style={{

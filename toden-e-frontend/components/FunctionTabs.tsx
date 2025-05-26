@@ -127,10 +127,18 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     },
   });
   
-  // Function when Prediction is Submitted
-  // Logs data, starts progress/loading, fills form, resets form, calls python backend and waits for a return
+
   async function PredictSubmit(data: z.infer<typeof PredictFormSchema>) {
     console.log(data)
+    if (
+      (data.alpha === '0.25' || data.alpha === '0.5') &&
+      data.file !== '' &&
+      !data.fileUpload
+    ) {
+      setSelectedFile(`Leukemia_${data.clusters}_${data.alpha}`);
+      onSubmitComplete();
+      return;
+    }
     setIsLoading(true);
     setProgress(0);
 
@@ -164,14 +172,11 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     } finally {
       setIsLoading(false);
       setPredictFileKey(prev => prev + 1);
+      setSelectedFile("custom");
       onSubmitComplete();
     }
   }
 
-  // CURRENT WORK
-  // Function when Visualization is Submitted
-  // Logs data, starts progress/loading, sets selected file, fills form
-  // calls Next api for data retrieval, sets selected node (first node), sets the data for graph
   async function VisualizeSubmit(data: z.infer<typeof VisualizeFormSchema>) {
     // console.log(data);
     setIsLoading(true);
@@ -265,7 +270,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
         <TabsList className="grid w-full grid-cols-3 space-x-2">
           <TabsTrigger value="predict">Predict</TabsTrigger>
           <TabsTrigger value="visualize">Visualize</TabsTrigger>
-          <TabsTrigger value="summarize">Summarize</TabsTrigger>
+          <TabsTrigger value="summarize" disabled>Summarize (Not Available)</TabsTrigger>
           {/* <TabsTrigger value="partition-score">Partition Score</TabsTrigger> */}
         </TabsList>
         <TabsContent value="predict">
@@ -725,9 +730,20 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                   >
                     Reset
                   </Button>
-                  <Button type="submit" disabled={!SummarizeForm.formState.isValid}>
-                    Submit
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span style={{ display: 'inline-block', cursor: 'not-allowed' }}>
+                          <Button type="submit" disabled={true}>
+                            Submit
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                      <p>Sorry, this feature is currently disabled.</p>
+                    </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </CardFooter>
               </form>
             </Form>

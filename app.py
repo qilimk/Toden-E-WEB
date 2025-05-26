@@ -34,8 +34,6 @@ def predict():
             pags_txt_path=file_data,
             alpha=float(alpha),
             num_clusters=int(clusters),
-            is_visualized=visualizeBool,
-            is_summary=summarizeBool
         )
         print("Finished Prediction")
     except Exception as e:

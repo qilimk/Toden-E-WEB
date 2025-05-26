@@ -35,6 +35,7 @@ export default function HomePage() {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [matrixDims, setMatrixDims] = useState<number[] | null>(null);
   const [hoveredCluster, setHoveredCluster] = useState<string[] | null>(null);
+  const [matrix, setMatrix] = useState<string[][]>([]);
 
   async function handleFileSelect(file: string) {
     const formData = new FormData();
@@ -96,7 +97,7 @@ export default function HomePage() {
               <X />
             </Button>
             <FunctionTabs
-              setClustersData={setClustersData} 
+              setClustersData={setClustersData}
               setSelectedNode={setSelectedNode}
               setSelectedFile={setSelectedFile}
               setView={setView}
@@ -127,6 +128,7 @@ export default function HomePage() {
                   todenEClusters={todenEClusters}
                   matrixDims={matrixDims}
                   setHoveredCluster={setHoveredCluster}
+                  matrix={matrix}
                 />
             }
             <div className="flex flex-1 flex-col">
@@ -183,6 +185,7 @@ export default function HomePage() {
                               todenEClusters={todenEClusters}
                               matrixDims={matrixDims}
                               setHoveredCluster={setHoveredCluster}
+                              matrix={matrix}
                             />
             }
             <MatrixVisualization 
@@ -193,6 +196,8 @@ export default function HomePage() {
               selectedMatrix={selectedMatrix}
               onFunctionalitySelect={handleGoToTabs}
               setMatrixDims={setMatrixDims}
+              matrix={matrix}
+              setMatrix={setMatrix}
             />
           </div>
         ) : (null)}
