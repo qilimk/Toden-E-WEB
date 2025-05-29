@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Edge } from "@/types/edge";
 import { UMAP } from "umap-js";
+// @ts-ignore
 import seedrandom from "seedrandom";
 import {
   Card,

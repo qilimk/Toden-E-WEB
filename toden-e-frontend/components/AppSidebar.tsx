@@ -266,6 +266,7 @@ export default function AppSidebar({
                 {selectedFunction === "toden-e" && todenEClusters && todenEClusters.clusters.length > 0 && (
                   <div className="space-y-4">
                     {todenEClusters.clusters.map((cluster, clusterIndex) => (
+                      <ScrollArea className="h-64">
                       <Table key={clusterIndex} className="w-full">
                         <TableHeader>
                           <TableRow>
@@ -291,6 +292,7 @@ export default function AppSidebar({
                           ))}
                         </TableBody>
                       </Table>
+                      </ScrollArea>
                     ))}
                   </div>
                 )}

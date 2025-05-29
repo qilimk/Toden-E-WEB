@@ -9,7 +9,6 @@ import AutoSizer from "react-virtualized-auto-sizer";
 
 interface MatrixVisualizationProps {
   setSidebarOpen: (open: boolean) => void;
-  setView: (view: string) => void;
   selectedFile: string;
   view: string;
   selectedMatrix: string;
@@ -21,7 +20,6 @@ interface MatrixVisualizationProps {
 
 export default function MatrixVisualization({ 
   setSidebarOpen,
-  setView,
   selectedFile,
   view,
   selectedMatrix,
