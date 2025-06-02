@@ -8,10 +8,8 @@ import { spawn } from 'child_process';
 const LOCAL_PROJECT_TMP_BASE = path.join(process.cwd(), 'tmp');
 const IS_VERCEL_ENV = !!process.env.VERCEL_ENV;
 
-// Node.js will save its main result JSON directly into this base, named by resultId.
-// Uploaded files will also go into this base, prefixed by resultId.
 const NODE_TEMP_STORAGE_BASE = IS_VERCEL_ENV
-  ? '/tmp' // On Vercel, use /tmp directly for Node's own temp files
+  ? '/tmpx' // On Vercel, use /tmp directly for Node's own temp files
   : LOCAL_PROJECT_TMP_BASE; // Locally, use project's ./tmp
 
 // Python will create its own subdirectory structure under this base path.
@@ -30,14 +28,10 @@ async function ensureDir(dirPath: string) {
 }
 
 async function ensureBaseTempDirectories() {
-  // Only ensure the base directories Node.js might write to directly,
-  // or the base for Python if they are different.
   await ensureDir(NODE_TEMP_STORAGE_BASE);
-  if (PYTHON_TARGET_TMP_BASE !== NODE_TEMP_STORAGE_BASE) { // Should be same for Vercel /tmp or local ./tmp logic
+  if (PYTHON_TARGET_TMP_BASE !== NODE_TEMP_STORAGE_BASE) {
     await ensureDir(PYTHON_TARGET_TMP_BASE);
   }
-  // Python script will create its own subdirectories (e.g., toden_e_py_outputs/<resultId>)
-  // within PYTHON_TARGET_TMP_BASE as needed.
 }
 
 function runPythonPredictScript(
@@ -117,27 +111,27 @@ export async function POST(request: NextRequest) {
       await fs.writeFile(tempUploadedInputFilePath, fileBuffer);
       pagsTxtPathForPython = tempUploadedInputFilePath;
       console.log(`Uploaded file "${fileUpload.name}" saved to: ${pagsTxtPathForPython}`);
-    } else if (selectedFileBaseName) {
-      // ... (logic for predefined files remains the same, not using temp for these source files) ...
+    } 
+    else if (selectedFileBaseName) {
       inputIdentifierForResults = `${selectedFileBaseName}.txt`;
       pagsTxtPathForPython = path.join(process.cwd(), 'python_scripts', 'data', `${selectedFileBaseName}.txt`);
       console.log(`Using predefined file: ${pagsTxtPathForPython}`);
       try { await fs.access(pagsTxtPathForPython); } catch (e) { /* ... error ... */ return NextResponse.json({ error: `Selected data file "${inputIdentifierForResults}" not found on server.` }, { status: 404 });}
-    } else {
+    } 
+    else {
       return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
     }
 
     console.log(`Invoking Toden-E Python script with: path=${pagsTxtPathForPython}, alpha=${alpha}, clusters=${clusters}, resultId=${resultId}, python_base_tmp=${PYTHON_TARGET_TMP_BASE}`);
     const pythonOutput = await runPythonPredictScript(pagsTxtPathForPython, alpha, clusters, resultId);
 
-    if (pythonOutput.error) { /* ... error ... */ }
+    if (pythonOutput.error) { }
 
     const actualPredictionData = pythonOutput.result;
     const expiresAt = Date.now() + TTL_MS;
-    // Node.js saves its main result JSON file directly into NODE_TEMP_STORAGE_BASE
-    const finalResultFilePath = path.join(NODE_TEMP_STORAGE_BASE, `${resultId}_final_result.json`);
+    const finalResultFilePath = path.join(NODE_TEMP_STORAGE_BASE, `${resultId}.json`);
 
-    const responsePayloadToStoreAndSend = { /* ... as before ... */
+    const responsePayloadToStoreAndSend = {
       id: resultId,
       requestedInput: inputIdentifierForResults,
       params: { alpha, clusters },

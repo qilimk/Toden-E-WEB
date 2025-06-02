@@ -192,8 +192,38 @@ export default function AppSidebar({
     }
   }
 
+  const handleCopyID = async (idToCopy: string | null) => {
+    if (idToCopy) {
+      try {
+        await navigator.clipboard.writeText(idToCopy);
+      } catch (err) {
+        console.error("Failed to copy ID: ", err);
+      }
+    }
+  };
+
   async function IDSubmit(data: z.infer<typeof IDFormSchema>) {
-    setTempID(data.id)
+    try {
+      const response = await fetch('/api/validate-id', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: data.id }),
+      });
+
+      const result = await response.json();
+      console.log(result)
+
+      if (response.ok && result.isValid) {
+        setTempID(data.id);
+      } else {
+        setTempID("Invalid");
+      }
+    } catch (error) {
+      console.error('Failed to validate ID:', error);
+      setTempID("Invalid"); 
+    }
   };
 
   // Rendering of sidebar.
@@ -264,12 +294,12 @@ export default function AppSidebar({
                       </Label>
                       <div className="col-span-2">
                       <Form {...IDForm}>
-                        <form onSubmit={IDForm.handleSubmit(IDSubmit)} className="flex gap-2 items-center">                      
+                        <form onSubmit={IDForm.handleSubmit(IDSubmit)} className="flex items-center space-x-2 justify-between">                      
                             <FormField
                               control={IDForm.control}
                               name="id"
                               render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="flex-1">
                                   <FormControl>
                                     <Input placeholder="ID" {...field}/>
                                   </FormControl>
@@ -288,11 +318,12 @@ export default function AppSidebar({
                           <Label className="col-span-1">
                             Temporary ID:
                           </Label>
-                          <div className="flex col-span-2">
-                            <p className="flex-1">{tempID}</p>
+                          <div className="flex col-span-2 items-center space-x-1">
+                            <p className="flex-1 text-sm">{tempID}</p>
                             <Button 
                               className=""
                               variant="ghost"
+                              onClick={() => handleCopyID(tempID)}
                             >
                               <CopyIcon />
                             </Button>
