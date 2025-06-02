@@ -14,9 +14,7 @@ def predict():
     file_selection = request.form.get('file')
     file_upload = request.files.get('fileUpload')
     alpha = request.form.get('alpha')
-    visualize = request.form.get('visualize')
     clusters = request.form.get('clusters')
-    summarize = request.form.get('summarize')
     
     if file_selection:
         file_data = file_selection + ".txt"
@@ -24,9 +22,6 @@ def predict():
         file_data = file_upload
     else:
         return jsonify({'error': 'No file provided'}), 400
-    
-    visualizeBool = True if visualize == 'yes' else False
-    summarizeBool = True if summarize == 'yes' else False
 
     try:
         print("Starting Prediction")

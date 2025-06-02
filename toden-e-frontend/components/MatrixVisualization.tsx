@@ -12,7 +12,7 @@ interface MatrixVisualizationProps {
   selectedFile: string;
   view: string;
   selectedMatrix: string;
-  onFunctionalitySelect: () => void;
+  handleGoToTabs: () => void;
   setMatrixDims: (dimensions: number[] | null) => void;
   matrix: string[][];
   setMatrix: (matrix: string[][]) => void;
@@ -23,7 +23,7 @@ export default function MatrixVisualization({
   selectedFile,
   view,
   selectedMatrix,
-  onFunctionalitySelect,
+  handleGoToTabs,
   setMatrixDims,
   matrix,
   setMatrix
@@ -69,7 +69,7 @@ export default function MatrixVisualization({
         >
           <TableOfContents />
         </Button>
-        <Button onClick={onFunctionalitySelect} variant="outline">
+        <Button onClick={handleGoToTabs} variant="outline">
           Select Functionality
         </Button>
       </div>

@@ -1,7 +1,6 @@
 // components/tabscontent.tsx
 "use client";
 
-// Import Statements
 import { useState, useEffect } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,12 +63,12 @@ interface TabsContentProps {
   setClustersData: (data: any) => void;
   setSelectedNode: (data: any) => void;
   setSelectedFile: (data: any) => void;
-  setView: (view: string) => void;
-  onSubmitComplete: () => void;
+  handleSubmitComplete: () => void;
+  setTempID: (id: string) => void;
 }
 
 // Function Tabs Component
-export default function FunctionTabs({ setClustersData, setSelectedNode, setSelectedFile, setView, onSubmitComplete }: TabsContentProps) {
+export default function FunctionTabs({ setClustersData, setSelectedNode, setSelectedFile, handleSubmitComplete, setTempID }: TabsContentProps) {
   const [predictFileKey, setPredictFileKey] = useState(0);
   const [visualizeFileKey, setVisualizeFileKey] = useState(0);
   const [summarizeFileKey, setSummarizeFileKey] = useState(0);
@@ -127,7 +126,6 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     },
   });
   
-
   async function PredictSubmit(data: z.infer<typeof PredictFormSchema>) {
     console.log(data)
     if (
@@ -136,7 +134,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
       !data.fileUpload
     ) {
       setSelectedFile(`Leukemia_${data.clusters}_${data.alpha}`);
-      onSubmitComplete();
+      handleSubmitComplete();
       return;
     }
     setIsLoading(true);
@@ -156,7 +154,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     PredictForm.reset();
 
     try {
-      const response = await fetch('http://localhost:5000/predict', {
+      const response = await fetch('/api/predict', {
         method: 'POST',
         body: formData,
       });
@@ -166,14 +164,16 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
       }
 
       const result = await response.json();
-      console.log('Predict result:', result);
+      if (result.resultId) {
+        setTempID(result.resultId); 
+      }
     } catch (error) {
       console.error('Error submitting predict form:', error);
     } finally {
       setIsLoading(false);
       setPredictFileKey(prev => prev + 1);
       setSelectedFile("custom");
-      onSubmitComplete();
+      handleSubmitComplete();
     }
   }
 
@@ -206,7 +206,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
       // console.log('Visualize result:', result);
       setSelectedNode(result.selectedNode);
       setClustersData({ clusters: result.allowedNodes });
-      onSubmitComplete();
+      handleSubmitComplete();
     } catch (error) {
       console.error('Error submitting visualize form:', error);
     } finally {
@@ -251,7 +251,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     } finally {
       setIsLoading(false);
       setSummarizeFileKey(prev => prev + 1);
-      onSubmitComplete();
+      handleSubmitComplete();
     }
   }
 
@@ -269,7 +269,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
       <Tabs defaultValue="predict">
         <TabsList className="grid w-full grid-cols-3 space-x-2">
           <TabsTrigger value="predict">Predict</TabsTrigger>
-          <TabsTrigger value="visualize">Visualize</TabsTrigger>
+          <TabsTrigger value="visualize" disabled>Visualize (Not Available)</TabsTrigger>
           <TabsTrigger value="summarize" disabled>Summarize (Not Available)</TabsTrigger>
           {/* <TabsTrigger value="partition-score">Partition Score</TabsTrigger> */}
         </TabsList>

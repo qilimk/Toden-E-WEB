@@ -6,7 +6,8 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import FunctionTabs from "@/components/FunctionTabs";
-import Navbar from '@/components/Navbar';
+// @ts-ignore
+import Navbar from '@/components/navbar';
 import DynamicGraph from "@/components/DynamicGraph";
 import AppSidebar from "@/components/AppSidebar";
 import MatrixVisualization from "@/components/MatrixVisualization";
@@ -15,44 +16,46 @@ import { Edge } from "@/types/edge";
 import SummaryDrawer from "@/components/SummaryDrawer";
 
 export default function HomePage() {
-  // Reconfiguration Notes:
-  // Navbar is good.
-  // About page is good.
-
-  // Whole tool:
-  // Enable custom file upload. (Need session ID and temp backend file creation (will need to store temp info in AWS probably))
-
-  // AppSidebar:
-  // Bug when choosing new node and edges not updating when changing to coco (need shared edges state).
-  // Toden-E clustering card reconfig.
-
-  // Shared between all components:
+  // File selected by user
   const [selectedFile, setSelectedFile] = useState<string>("");
+  // Is sidebar open or not?
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-
-  // Shared between Sidebar and Graph:
+  // What is the selected Node?
   const [selectedNode, setSelectedNode] = useState<string>("");
+  // What is the selected Function?
   const [selectedFunction, setSelectedFunction] = useState<string>("toden-e");
+  // What is the selected Edge?
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  // What is the hoveredEdge?
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
+  // Keeps track of what clusters each node belongs to for rendering in sidebar and graph.
   const [todenEClusters, setTodenEClusters] = useState<any>(null);
+  // What is the hovered Node?
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  // What is the hovered Cluster?
   const [hoveredCluster, setHoveredCluster] = useState<string[] | null>(null);
+  // What is the current view?
   const [view, setView] = useState<string>("graph");
-
-  // Shared between Sidebar and Matrix:
+  // What edges are available dependent upon current node?
+  const [edges, setEdges] = useState<Edge[]>([]);
+  // What is the selected Matrix?
   const [selectedMatrix, setSelectedMatrix] = useState<string>("adj");
+  // What are the matrix dims?
   const [matrixDims, setMatrixDims] = useState<number[] | null>(null);
+  // Used to set the matrix values (so user can download into csv)
   const [matrix, setMatrix] = useState<string[][]>([]);
-
-  // Only on Home Page:
+  // Tracks what the previous view is so when the user exits FunctionTabs it takes you back there.
   const [prevView, setPrevView] = useState<string>("graph");
-
-  // Only on Graph:
+  // Is summarize drawer open or not?
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
-
-  // States I might remove after reconfiguration:
+  // ?!?!?!
   const [clustersData, setClustersData] = useState<{ clusters: string[] } | null>(null);
+
+  const [tempID, setTempID] = useState<string | null>(null);
+
+  const [isLoadingCustomResult, setIsLoadingCustomResult] = useState(false);
+  const [customResultIdInput, setCustomResultIdInput] = useState('');
+  const [showCustomResultDialog, setShowCustomResultDialog] = useState(false);
 
   async function handleFileSelect(file: string) {
     const formData = new FormData();
@@ -92,11 +95,13 @@ export default function HomePage() {
     }
   }, [nodesArray, selectedNode]);
 
+  // Sets previous view and goes to tabs.
   function handleGoToTabs() {
     setPrevView(view);
     setView("tabs");
   }
 
+  // Sets view to previous view.
   function handleSubmitComplete() {
     setView(prevView);
   }
@@ -117,8 +122,8 @@ export default function HomePage() {
               setClustersData={setClustersData}
               setSelectedNode={setSelectedNode}
               setSelectedFile={setSelectedFile}
-              setView={setView}
-              onSubmitComplete={handleSubmitComplete}
+              handleSubmitComplete={handleSubmitComplete}
+              setTempID={setTempID}
             />
           </div>
         ) : view == "graph" ? (
@@ -131,7 +136,7 @@ export default function HomePage() {
                   setSelectedFunction={setSelectedFunction}
                   setSelectedFile={setSelectedFile}
                   selectedFile={selectedFile}
-                  onFileSelect={handleFileSelect}
+                  handleFileSelect={handleFileSelect}
                   selectedNode={selectedNode}
                   setView={setView}
                   view={view}
@@ -146,6 +151,10 @@ export default function HomePage() {
                   matrixDims={matrixDims}
                   setHoveredCluster={setHoveredCluster}
                   matrix={matrix}
+                  edges={edges}
+                  setEdges={setEdges}
+                  tempID={tempID}
+                  setTempID={setTempID}
                 />
             }
             <div className="flex flex-1 flex-col">
@@ -166,12 +175,14 @@ export default function HomePage() {
                 setHoveredNode={setHoveredNode}
                 setDrawerOpen={setDrawerOpen}
                 drawerOpen={drawerOpen}
-                onFunctionalitySelect={handleGoToTabs}
+                handleGoToTabs={handleGoToTabs}
                 setTodenEClusters={setTodenEClusters}
                 todenEClusters={todenEClusters}
                 hoveredCluster={hoveredCluster}
+                edges={edges}
+                setEdges={setEdges}
               />
-              { drawerOpen &&
+              {drawerOpen &&
                 <SummaryDrawer 
                   setDrawerOpen={setDrawerOpen}
                   selectedFunction={selectedFunction} 
@@ -188,7 +199,7 @@ export default function HomePage() {
                               setSelectedFunction={setSelectedFunction}
                               setSelectedFile={setSelectedFile}
                               selectedFile={selectedFile}
-                              onFileSelect={handleFileSelect}
+                              handleFileSelect={handleFileSelect}
                               selectedNode={selectedNode}
                               setView={setView}
                               view={view}
@@ -203,6 +214,10 @@ export default function HomePage() {
                               matrixDims={matrixDims}
                               setHoveredCluster={setHoveredCluster}
                               matrix={matrix}
+                              edges={edges}
+                              setEdges={setEdges}
+                              tempID={tempID}
+                              setTempID={setTempID}
                             />
             }
             <MatrixVisualization 
@@ -210,7 +225,7 @@ export default function HomePage() {
               selectedFile={selectedFile}
               view={view}
               selectedMatrix={selectedMatrix}
-              onFunctionalitySelect={handleGoToTabs}
+              handleGoToTabs={handleGoToTabs}
               setMatrixDims={setMatrixDims}
               matrix={matrix}
               setMatrix={setMatrix}

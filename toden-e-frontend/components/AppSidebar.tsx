@@ -2,47 +2,26 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-    Table,
-    TableBody,
-    TableCaption,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-  } from "@/components/ui/table";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { NodeCombobox } from "@/components/NodeCombobox";
 import { EdgeCombobox } from "@/components/EdgeCombobox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download } from "lucide-react";
-
 import { Edge } from "@/types/edge";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormLabel, FormDescription, FormMessage, FormItem } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { CopyIcon } from "@radix-ui/react-icons";
 
+const IDFormSchema = z.object({
+  id: z.string().nonempty({ message: "ID value required." }),
+})
 interface AppSidebarProps {
   nodes: { value: string; label: string }[];
   setSelectedNode: (node: string) => void;
@@ -50,12 +29,12 @@ interface AppSidebarProps {
   setSelectedFunction: (fn: string) => void;
   setSelectedFile: (file: string) => void;
   selectedFile: string;
-  onFileSelect: (file: string) => void;
+  handleFileSelect: (file: string) => void;
   selectedNode: string;
   setView: (view: string) => void;
   view: string;
   selectedEdge: Edge | null;
-  setSelectedEdge: (edge: Edge) => void;
+  setSelectedEdge: (edge: Edge | null) => void;
   hoveredEdge: string | null;
   setHoveredEdge: (edge: string | null) => void;
   setHoveredNode: (node: string | null) => void;
@@ -65,6 +44,10 @@ interface AppSidebarProps {
   matrixDims: number[] | null;
   setHoveredCluster: (cluster: string[] | null) => void;
   matrix: string[][];
+  edges: Edge[];
+  setEdges: (edges: Edge[]) => void;
+  tempID: string | null;
+  setTempID: (id: string) => void;
 }
 
 export default function AppSidebar({ 
@@ -74,7 +57,7 @@ export default function AppSidebar({
     setSelectedFunction, 
     setSelectedFile, 
     selectedFile, 
-    onFileSelect,
+    handleFileSelect,
     selectedNode,
     setView,
     view,
@@ -88,13 +71,25 @@ export default function AppSidebar({
     todenEClusters,
     matrixDims,
     setHoveredCluster,
-    matrix
+    matrix,
+    edges,
+    setEdges,
+    tempID,
+    setTempID
   }: AppSidebarProps) {
 
-  const [edges, setEdges] = useState<Edge[]>([]);
+  const IDForm = useForm({
+      resolver: zodResolver(IDFormSchema),
+      defaultValues: {
+        id: "",
+      },
+    });
 
+  // If selectedNode or selectedFile change, update edges.
   useEffect(() => {
-    if (selectedFunction == "toden-e") return;
+    if (selectedFunction === "toden-e") return;
+
+    setSelectedEdge(null);
     if (selectedNode && selectedFile) {
       fetch("/api/get-edge-information", {
         method: "POST",
@@ -103,7 +98,6 @@ export default function AppSidebar({
       })
         .then((res) => res.json())
         .then((data) => {
-          // Ensure data.edges is an array; if similarity is not a number already, convert it here.
           const fetchedEdges = data.edges?.map((edge: any) => ({
             ...edge,
             similarity: Number(edge.similarity),
@@ -117,14 +111,23 @@ export default function AppSidebar({
     }
   }, [selectedNode, selectedFile]);
 
-  const handleDownloadCSV = async () => { // Make the handler async
+  useEffect(() => {
+    setSelectedEdge(null);
+
+    if (selectedFunction === "toden-e") {
+      setEdges([]);
+    }
+    
+  }, [selectedFunction, setSelectedEdge, setEdges]);
+
+  // Enable download of matrix csv.
+  const handleDownloadCSV = async () => {
       if (!matrix || matrix.length === 0) {
           alert("No matrix data available to download.");
           return;
       }
 
       const currentFileName = `${selectedFile}_${selectedMatrix}.csv`;
-
       const csvContent = matrix.map(row => {
           return row.map(cell => {
               const cellString = String(cell ?? '');
@@ -137,10 +140,10 @@ export default function AppSidebar({
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
 
-      // Call the saveData helper
       await saveData(blob, currentFileName);
   };
 
+  // Helper for downloading CSV
   async function saveData(blob: Blob, suggestedName: string) {
     try {
       // Try the File System Access API
@@ -189,6 +192,11 @@ export default function AppSidebar({
     }
   }
 
+  async function IDSubmit(data: z.infer<typeof IDFormSchema>) {
+    setTempID(data.id)
+  };
+
+  // Rendering of sidebar.
   return (
     <div className="flex flex-row">
       <ScrollArea className="px-2 pt-2">
@@ -226,7 +234,7 @@ export default function AppSidebar({
                     <div className="col-span-2">
                       <Select onValueChange={(value) => {
                               setSelectedFile(value);
-                              onFileSelect(value);
+                              handleFileSelect(value);
                               }}
                               value={selectedFile}
                       >
@@ -249,6 +257,50 @@ export default function AppSidebar({
                         </SelectContent>
                       </Select>
                     </div>
+                    {selectedFile === "custom" ? (
+                      <>
+                      <Label className="col-span-1">
+                        File Selection
+                      </Label>
+                      <div className="col-span-2">
+                      <Form {...IDForm}>
+                        <form onSubmit={IDForm.handleSubmit(IDSubmit)} className="flex gap-2 items-center">                      
+                            <FormField
+                              control={IDForm.control}
+                              name="id"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input placeholder="ID" {...field}/>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <Button type="submit" disabled={!IDForm.formState.isValid}>
+                              Submit
+                            </Button>
+                          </form>
+                      </Form>
+                      </div>
+                      {tempID !== null ? (
+                        <>
+                          <Label className="col-span-1">
+                            Temporary ID:
+                          </Label>
+                          <div className="flex col-span-2">
+                            <p className="flex-1">{tempID}</p>
+                            <Button 
+                              className=""
+                              variant="ghost"
+                            >
+                              <CopyIcon />
+                            </Button>
+                          </div>
+                        </>
+                      ) : (null)}
+                      </>
+                    ) : (null)}
                 </div>
               </CardContent>
               {selectedFunction === "CoCo" ? (
@@ -406,7 +458,7 @@ export default function AppSidebar({
                   <div className="col-span-2">
                     <Select onValueChange={(value) => {
                             setSelectedFile(value);
-                            onFileSelect(value);
+                            handleFileSelect(value);
                             }}
                             value={selectedFile}
                     >

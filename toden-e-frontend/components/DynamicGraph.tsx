@@ -34,10 +34,12 @@ interface DynamicGraphProps {
   setHoveredNode: (node: string | null) => void;
   setDrawerOpen: (open: boolean) => void;
   drawerOpen: boolean;
-  onFunctionalitySelect: () => void;
+  handleGoToTabs: () => void;
   setTodenEClusters: (clusters: { clusters: string[][]; sortedNodes: string[] } | null) => void;
   todenEClusters: { clusters: string[][]; sortedNodes: string[] } | null;
   hoveredCluster: string[] | null;
+  edges: Edge[];
+  setEdges: (edges: Edge[]) => void;
 }
 
 export default function DynamicGraph({ 
@@ -57,10 +59,12 @@ export default function DynamicGraph({
     setHoveredNode,
     setDrawerOpen,
     drawerOpen,
-    onFunctionalitySelect,
+    handleGoToTabs,
     setTodenEClusters,
     todenEClusters,
     hoveredCluster,
+    edges,
+    setEdges
   }: DynamicGraphProps) {
 
   const [scale, setScale] = useState(1);
@@ -97,6 +101,27 @@ export default function DynamicGraph({
       return { ...item, x, y, normSim: sim };
     });
   }, [cocoData, centerX, centerY]);
+
+  useEffect(() => {
+    if (selectedFunction === "CoCo" && selectedNode && dimensions) {
+      if (surroundingNodes.length > 0) {
+        const newEdges: Edge[] = surroundingNodes.map((node: { GS_B_ID: any; normSim: any; x: number; y: number; }) => ({
+        from: selectedNode,
+        to: node.GS_B_ID,
+        similarity: node.normSim,
+        x: (centerX + node.x) / 2,
+        y: (centerY + node.y) / 2,
+      }));
+        setEdges(newEdges);
+      } 
+      else if (cocoData && cocoData.length === 0) {
+        setEdges([]);
+      }
+    } 
+    else if (selectedFunction !== "CoCo") {
+    
+    }
+  }, [selectedFunction, surroundingNodes, selectedNode, setEdges, centerX, centerY, cocoData, dimensions]);
 
   // Measure container dimensions once the component mounts.
   useLayoutEffect(() => {
@@ -135,7 +160,7 @@ export default function DynamicGraph({
 
   useEffect(() => {
     const fetchNodeDetails = async () => {
-      if (!selectedNode || selectedFunction !== "toden-e") {
+      if (!selectedNode || (selectedFunction !== "toden-e" && selectedFunction !== "CoCo")) {
         setNodeDetails(null);
         return;
       }
@@ -254,11 +279,6 @@ export default function DynamicGraph({
 
   const openNodeCard = () => {
     setNodeCardOpen((prev: boolean) => !prev)
-    populateNodeDetails()
-  };
-
-  const populateNodeDetails = () => {
-    console.log("Create API call to populate node details.")
   };
 
   const handleMouseUp = () => {
@@ -367,7 +387,7 @@ export default function DynamicGraph({
           <TableOfContents/>
         </Button>
         <Button
-            onClick={onFunctionalitySelect}
+            onClick={handleGoToTabs}
             variant="outline"
           >
           Select Functionality

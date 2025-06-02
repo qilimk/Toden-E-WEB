@@ -1,0 +1,26 @@
+{
+  "id": "607232a4-2afe-4364-87ab-c41883b03adb",
+  "requestedInput": "Leukemia.txt",
+  "params": {
+    "alpha": "0.68",
+    "clusters": "3"
+  },
+  "prediction": {
+    "nodes_count": 211,
+    "nodes_in_final_matrix_construction": 133,
+    "processed": true,
+    "message": "Prediction completed. Output files generated in temporary storage.",
+    "output_file_paths": {
+      "clusters_csv": "/Users/codybnic/Development/Toden-E-WEB/toden-e-frontend/tmp/toden_e_py_outputs/607232a4-2afe-4364-87ab-c41883b03adb/clusters_k3_alpha0p68_607232a4-2afe-4364-87ab-c41883b03adb.csv",
+      "adj_matrix_csv": "/Users/codybnic/Development/Toden-E-WEB/toden-e-frontend/tmp/toden_e_py_outputs/607232a4-2afe-4364-87ab-c41883b03adb/matrix/adj_matrix_k3_alpha0p68_607232a4-2afe-4364-87ab-c41883b03adb.csv",
+      "con_matrix_csv": "/Users/codybnic/Development/Toden-E-WEB/toden-e-frontend/tmp/toden_e_py_outputs/607232a4-2afe-4364-87ab-c41883b03adb/matrix/con_matrix_k3_alpha0p68_607232a4-2afe-4364-87ab-c41883b03adb.csv"
+    },
+    "parameters_used": {
+      "alpha": 0.68,
+      "num_clusters": 3,
+      "input_file_name": "Leukemia.txt"
+    }
+  },
+  "generatedAt": "2025-06-02T02:29:32.206Z",
+  "expiresAtIso": "2025-06-02T02:59:32.206Z"
+}
