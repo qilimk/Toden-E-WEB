@@ -531,6 +531,51 @@ export default function AppSidebar({
                       </SelectContent>
                     </Select>
                   </div>
+                  {selectedFile === "custom" ? (
+                      <>
+                      <Label className="col-span-1">
+                        File Selection
+                      </Label>
+                      <div className="col-span-2">
+                      <Form {...IDForm}>
+                        <form onSubmit={IDForm.handleSubmit(IDSubmit)} className="flex items-center space-x-2 justify-between">                      
+                            <FormField
+                              control={IDForm.control}
+                              name="id"
+                              render={({ field }) => (
+                                <FormItem className="flex-1">
+                                  <FormControl>
+                                    <Input placeholder="ID" {...field}/>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <Button type="submit" disabled={!IDForm.formState.isValid}>
+                              Submit
+                            </Button>
+                          </form>
+                      </Form>
+                      </div>
+                      {tempID !== null ? (
+                        <>
+                          <Label className="col-span-1">
+                            Temporary ID:
+                          </Label>
+                          <div className="flex col-span-2 items-center space-x-1">
+                            <p className="flex-1 text-sm">{tempID}</p>
+                            <Button 
+                              className=""
+                              variant="ghost"
+                              onClick={() => handleCopyID(tempID)}
+                            >
+                              <CopyIcon />
+                            </Button>
+                          </div>
+                        </>
+                      ) : (null)}
+                      </>
+                    ) : (null)}
                 </div>
               </CardContent>
             </Card>

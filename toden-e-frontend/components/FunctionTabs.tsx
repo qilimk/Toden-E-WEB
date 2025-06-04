@@ -127,16 +127,24 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
   });
   
   async function PredictSubmit(data: z.infer<typeof PredictFormSchema>) {
-    console.log(data)
+    console.log("Before normalization:", JSON.stringify(data)); // Log the whole data object
+    // 1. Normalization
+    if (data.alpha === '0.50') {
+      data.alpha = '0.5';
+    }
+    console.log("After normalization - data.alpha:", data.alpha, "data.file:", data.file, "data.fileUpload:", data.fileUpload);
+
     if (
-      (data.alpha === '0.25' || data.alpha === '0.5') &&
-      data.file !== '' &&
-      !data.fileUpload
+      (data.alpha === '0.25' || data.alpha === '0.5') && // Condition A (alpha part)
+      data.file !== '' &&                                 // Condition B (file path part)
+      !data.fileUpload                                    // Condition C (file upload flag part)
     ) {
       setSelectedFile(`Leukemia_${data.clusters}_${data.alpha}`);
       handleSubmitComplete();
+      console.log("IF block entered for predefined file.");
       return;
     }
+    console.log("IF block bypassed. Preparing to invoke script.");
     setIsLoading(true);
     setProgress(0);
 

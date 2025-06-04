@@ -1685,9 +1685,9 @@ def toden_e_predict(pags_txt_path = "Leukemia_drug_resistantVSsensitive.txt", al
         }
 
     alpha_str_filename = str(alpha).replace('.', 'p')
-    clusters_csv_save_path = os.path.join(python_specific_outputs_dir, f"clusters_k{num_clusters}_alpha{alpha_str_filename}_{result_id}.csv")
-    adj_csv_save_path = os.path.join(matrix_files_subdir, f"adj_matrix_k{num_clusters}_alpha{alpha_str_filename}_{result_id}.csv")
-    con_csv_save_path = os.path.join(matrix_files_subdir, f"con_matrix_k{num_clusters}_alpha{alpha_str_filename}_{result_id}.csv")
+    clusters_csv_save_path = os.path.join(python_specific_outputs_dir, f"clusters_{result_id}.csv")
+    adj_csv_save_path = os.path.join(matrix_files_subdir, f"adj_{result_id}.csv")
+    con_csv_save_path = os.path.join(matrix_files_subdir, f"con_{result_id}.csv")
 
     # --- Your existing core data processing logic starts here ---
     # This part remains unchanged as per your request, other than using the new save paths.

@@ -19,7 +19,6 @@ export async function POST(request: Request) {
     const tempDirPath = path.join(projectRoot, 'tmp');
     const targetFilename = `${id}.json`; // Append .json to the ID
     const targetPath = path.join(tempDirPath, targetFilename);
-    console.log(targetPath)
 
     try {
       await fs.access(targetPath);

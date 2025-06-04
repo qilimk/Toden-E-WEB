@@ -229,6 +229,7 @@ export default function HomePage() {
               setMatrixDims={setMatrixDims}
               matrix={matrix}
               setMatrix={setMatrix}
+              tempID={tempID}
             />
           </div>
         ) : (null)}
