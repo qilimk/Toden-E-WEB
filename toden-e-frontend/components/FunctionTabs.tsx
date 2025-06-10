@@ -55,10 +55,6 @@ const SummarizeFormSchema = z
     { message: "Please select a file or upload one.", path: ["fileUpload"] }
 );
 
-// Props for this component.
-// Clusters Data: 
-// Selected Node: Node selected by the user for visualization/inspection.
-// Selected File: File that is being used in the backend to deliver front end information.
 interface TabsContentProps {
   setClustersData: (data: any) => void;
   setSelectedNode: (data: any) => void;

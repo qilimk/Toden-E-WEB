@@ -40,6 +40,7 @@ interface DynamicGraphProps {
   hoveredCluster: string[] | null;
   edges: Edge[];
   setEdges: (edges: Edge[]) => void;
+  tempID: string | null;
 }
 
 export default function DynamicGraph({ 
@@ -64,7 +65,8 @@ export default function DynamicGraph({
     todenEClusters,
     hoveredCluster,
     edges,
-    setEdges
+    setEdges,
+    tempID
   }: DynamicGraphProps) {
 
   const [scale, setScale] = useState(1);
@@ -183,73 +185,177 @@ export default function DynamicGraph({
     fetchNodeDetails();
   }, [selectedNode, selectedFunction]);
 
+  // Ensure UMAP and seedrandom are imported or available in the scop
+
   const fetchConMatrixAndComputeUMAP = async () => {
-    if (!selectedFile) return;
+    let fileToFetch: string | null;
+    let idTypeForApi: 'standard' | 'custom';
+
+    if (selectedFile === "custom") {
+      if (!tempID || tempID === "Invalid") { // Check if tempID is valid for custom mode
+        console.error("fetchConMatrixAndComputeUMAP: 'custom' mode selected, but valid tempID is not available.");
+        setUmapCoords([]); // Clear previous UMAP coordinates
+        return; // Do not proceed if tempID is not valid for a custom run
+      }
+      fileToFetch = tempID; // Use the actual resultId (tempID)
+      idTypeForApi = 'custom';
+    } else if (selectedFile) { // This is a preset/standard file
+      fileToFetch = selectedFile;
+      idTypeForApi = 'standard';
+    } else {
+      console.log("fetchConMatrixAndComputeUMAP: No file selected (selectedFile is null or empty).");
+      setUmapCoords([]); // Clear UMAP coordinates as no file is selected
+      return; // No file selected, so nothing to fetch
+    }
 
     try {
-      const response = await fetch(
-        `/api/get-matrix-information?file=${encodeURIComponent(selectedFile)}&type=con`
-      );
+      const queryParams = new URLSearchParams({
+        file: fileToFetch,
+        type: 'con', // Matrix type for UMAP is 'con'
+        id_type: idTypeForApi // Crucially, add id_type
+      });
+
+      const apiPath = `/api/get-matrix-information?${queryParams.toString()}`;
+      console.log("Fetching matrix for UMAP from:", apiPath); // For debugging the constructed path
+
+      const response = await fetch(apiPath);
+
       if (!response.ok) {
         const text = await response.text();
-        console.error("Error response:", text);
-        throw new Error("Error fetching concatenated matrix");
+        console.error("Error response from get-matrix-information:", response.status, text);
+        setUmapCoords([]); // Clear UMAP coordinates on error
+        // You might want to throw an error or set an error state here
+        return;
       }
+
       const data = await response.json();
+
+      if (data.error) {
+        console.error("API returned an error for get-matrix-information:", data.error);
+        setUmapCoords([]);
+        return;
+      }
+
+      if (!data.matrix || data.matrix.length === 0) {
+        console.error("Fetched matrix is empty or undefined from get-matrix-information.");
+        setUmapCoords([]);
+        return;
+      }
+
       // Convert matrix strings to numbers
-      const conMatrix = data.matrix.map((row: string[]) => row.map(cell => parseFloat(cell)));
+      const conMatrix = data.matrix.map((row: string[]) => row.map((cell: string) => parseFloat(cell)));
+
+      // Validate matrix content
+      if (conMatrix.some((row: number[]) => row.some(isNaN))) {
+        console.error("Matrix for UMAP contains NaN values after parsing.");
+        setUmapCoords([]);
+        return;
+      }
+      if (conMatrix.length === 0) { // Check if matrix became empty after potential filtering/parsing
+          console.error("Matrix for UMAP is effectively empty after parsing.");
+          setUmapCoords([]);
+          return;
+      }
+      
       // Compute 2D coordinates with UMAP
       const rng = seedrandom("toden-e-layout-v1");
-      const umap = new UMAP({ nComponents: 2, nNeighbors: 15, minDist: 0.1, random: rng });
-      const coords = umap.fit(conMatrix);
+      const umapNeighborsSetting = 15; // The value you pass to the constructor
+      const umapInstance = new UMAP({ 
+        nComponents: 2, 
+        nNeighbors: umapNeighborsSetting, // Use the variable here
+        minDist: 0.1, 
+        random: rng 
+      });
+      
+      // Optional: Check if there are enough data points for UMAP's nNeighbors setting
+      if (conMatrix.length > 0 && conMatrix.length < umapNeighborsSetting + 1) { // Use your setting directly
+          console.warn(`Matrix for UMAP has ${conMatrix.length} data points, which is less than UMAP nNeighbors+1 (${umapNeighborsSetting + 1}). UMAP results might be suboptimal or error out.`);
+      }
+      
+      const coords = umapInstance.fit(conMatrix);
       console.log("Computed UMAP coordinates:", coords);
       setUmapCoords(coords);
+
     } catch (error) {
-      console.error("Error processing concatenated matrix for UMAP:", error);
+      console.error("Error in fetchConMatrixAndComputeUMAP:", error);
+      setUmapCoords([]); // Clear UMAP coordinates on any exception
     }
   };
 
   const fetchTodenEClusters = async () => {
-    if (!selectedFile) return;
-    try {
-      const response = await fetch('/api/get-toden-e-visualization', {
-        method: 'POST',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: selectedFile })
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        console.error("Error response:", text);
-        throw new Error("Error fetching Toden‑E cluster data");
+    let fileToUse;
+    let idTypeForApi;
+
+    if (selectedFile === "custom") {
+      if (!tempID) {
+        console.error("fetchTodenEClusters: selectedFile is 'custom' but tempID (custom result ID) is not available.");
+        setTodenEClusters(null);
+        return;
       }
+      fileToUse = tempID;
+      idTypeForApi = 'custom';
+    } 
+    else {
+      if (!selectedFile) {
+        console.error("fetchTodenEClusters: selectedFile is not 'custom' and is not set.");
+        setTodenEClusters(null);
+        return;
+      }
+      fileToUse = selectedFile;
+      idTypeForApi = 'standard';
+    }
+
+    try {
+      const queryParams = new URLSearchParams({
+        file: fileToUse,
+        id_type: idTypeForApi
+      });
+
+      const response = await fetch(`/api/get-toden-e-visualization?${queryParams.toString()}`, {
+        method: 'GET'
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Error response from /api/get-toden-e-visualization (${response.status}):`, errorText);
+        throw new Error(`Failed to fetch Toden‑E cluster data. Status: ${response.status}`);
+      }
+
       const data = await response.json();
-      console.log("Toden‑E Cluster Data", data);
+      console.log("Toden‑E Cluster Data fetched successfully:", data);
       setTodenEClusters(data);
+
     } catch (error) {
-      console.error("Error fetching Toden‑E cluster data:", error);
+      console.error("Error in fetchTodenEClusters:", error);
+      setTodenEClusters(null);
     }
   };
 
   useEffect(() => {
-    if (view !== "graph") return;
-    if (!selectedNode || !selectedFile) return;
-    if (selectedFile == "custom") {
-      setCocoData(null);
+    if (view !== "graph") {
       setTodenEClusters(null);
       return;
-    }  
-  
+    }
+    
+    if (!selectedNode || !selectedFile) {
+      console.log("useEffect: Prerequisites (selectedNode, selectedFile) not met.");
+      setTodenEClusters(null);
+      return;
+    }
+    
     if (selectedFunction === "CoCo") {
       fetchCocoData();
+      setTodenEClusters(null);
     } else if (selectedFunction === "toden-e") {
       fetchConMatrixAndComputeUMAP();
       fetchTodenEClusters();
+    } else if (selectedFunction === "toden-e-2") {
+      setTodenEClusters(null);
+    } else {
+      setTodenEClusters(null);
     }
-    else if (selectedFunction === "toden-e-2") {
-      //fetchConMatrixAndComputeUMAP();
-      // fetchTodenEClusters();
-    }
-  }, [view, selectedFunction, selectedNode, selectedFile, clustersData]);
+
+  }, [view, selectedFunction, selectedNode, selectedFile, tempID, clustersData]);
 
   const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
 

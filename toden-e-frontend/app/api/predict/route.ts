@@ -83,6 +83,92 @@ function runPythonPredictScript(
   });
 }
 
+function splitCSV(line: string): string[] {
+  return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+}
+
+function extractNodesFromTodenEClusterCSV(fileContent: string): Set<string> {
+  const nodesSet = new Set<string>();
+  const lines = fileContent.split('\n').filter(line => line.trim() !== '');
+  
+  const i_start = 1; // Skip header line
+  for (let i = i_start; i < lines.length; i++) {
+    const cols = splitCSV(lines[i]); // Use your existing splitCSV
+    // Node lists start from the second column (index 1) after Algorithm/ID
+    const j_start = 1; 
+    for (let j = j_start; j < cols.length; j++) {
+      const cleaned = cols[j].replace(/"/g, ''); 
+      const tokens = cleaned.split(',').map(s => s.trim()).filter(Boolean);
+      tokens.forEach(n => nodesSet.add(n));
+    }
+  }
+  console.log("extractNodesFromTodenEClusterCSV extracted nodesSet size:", nodesSet.size);
+  if (nodesSet.size > 0) {
+      console.log("extractNodesFromTodenEClusterCSV sample extracted nodes:", Array.from(nodesSet).slice(0, 5));
+  }
+  return nodesSet;
+}
+
+async function generateMTypeRelatedDataFile(
+  sourceTodenEClusterCsvPath: string, // Changed parameter name for clarity
+  hugeBioProcessFilePath: string,
+  outputCsvFilePath: string
+) {
+  let sourceFileContent;
+  try {
+    sourceFileContent = await fs.readFile(sourceTodenEClusterCsvPath, 'utf8');
+  } catch (err) {
+    console.error(`generateMTypeRelatedDataFile: Source Toden-E cluster CSV file not found at ${sourceTodenEClusterCsvPath}`, err);
+    throw new Error(`Source Toden-E cluster CSV file for M-Type data not found: ${sourceTodenEClusterCsvPath}`);
+  }
+
+  // Use the correct extraction logic for the Toden-E cluster CSV file
+  const nodesSet = extractNodesFromTodenEClusterCSV(sourceFileContent);
+  const allowedNodes = Array.from(nodesSet).sort();
+
+  const headerLine = 'GS_A_ID,GS_B_ID,SIMILARITY\n';
+
+  if (allowedNodes.length === 0) {
+    console.warn(`generateMTypeRelatedDataFile: No allowed nodes extracted from ${sourceTodenEClusterCsvPath}. Output file will be empty (headers only).`);
+    await fs.writeFile(outputCsvFilePath, headerLine, 'utf8');
+    console.log(`generateMTypeRelatedDataFile: Empty M-Type data file (headers only) written to ${outputCsvFilePath}`);
+    return { allowedNodesCount: 0, resultsCount: 0 };
+  }
+
+  let hugeContent;
+  try {
+    hugeContent = await fs.readFile(hugeBioProcessFilePath, 'utf8');
+  } catch (err) {
+    console.error(`generateMTypeRelatedDataFile: Huge bioprocess file not found at ${hugeBioProcessFilePath}`, err);
+    throw new Error(`Huge bioprocess file not found: ${hugeBioProcessFilePath}`);
+  }
+  
+  const hugeLines = hugeContent.split('\n').filter(line => line.trim() !== '');
+  const results = [];
+
+  for (let i = 1; i < hugeLines.length; i++) { 
+    const cols = hugeLines[i].split('\t'); 
+    if (cols.length < 7) continue;
+
+    if (nodesSet.has(cols[0]) && nodesSet.has(cols[1])) {
+      results.push({
+        GS_A_ID: cols[0],
+        GS_B_ID: cols[1],
+        SIMILARITY: cols[6]
+      });
+    }
+  }
+  
+  const csvLines = results.map(r => `${r.GS_A_ID},${r.GS_B_ID},${r.SIMILARITY}`).join('\n');
+  
+  const outputDir = path.dirname(outputCsvFilePath);
+  await ensureDir(outputDir);
+
+  await fs.writeFile(outputCsvFilePath, headerLine + csvLines, 'utf8');
+  console.log(`generateMTypeRelatedDataFile: M-Type data file with ${results.length} records written to ${outputCsvFilePath}`);
+  return { allowedNodesCount: allowedNodes.length, resultsCount: results.length };
+}
+
 export async function POST(request: NextRequest) {
   await ensureBaseTempDirectories();
 
@@ -126,6 +212,28 @@ export async function POST(request: NextRequest) {
     const pythonOutput = await runPythonPredictScript(pagsTxtPathForPython, alpha, clusters, resultId);
 
     if (pythonOutput.error) { }
+    const mTypeHugeFilePath = path.join(process.cwd(), 'go_metadata', 'm_type_biological_process.txt');
+
+    const sourceTodenEClusterCsvPath = path.join(PYTHON_TARGET_TMP_BASE, 'toden_e_py_outputs', `${resultId}`, `clusters_${resultId}.csv`);
+    // The output path for the new CSV, within the Python script's output structure for this resultId
+    const mTypeOutputCsvPath = path.join(PYTHON_TARGET_TMP_BASE, 'toden_e_py_outputs', resultId, `data_${resultId}.csv`);
+    
+    let mTypeGenerationStats: { allowedNodesCount: number; resultsCount: number } | null = null;
+    try {
+      // pagsTxtPathForPython contains the data from which nodes should be extracted.
+      // Ensure extractNodesFromInputFile is appropriate for its format.
+      mTypeGenerationStats = await generateMTypeRelatedDataFile(
+        sourceTodenEClusterCsvPath,
+        mTypeHugeFilePath,
+        mTypeOutputCsvPath
+      );
+      console.log(`M-Type related data generation for resultId ${resultId} completed. Stats:`, mTypeGenerationStats);
+    } catch (mTypeError: any) {
+      console.error(`Failed to generate M-Type related data for resultId ${resultId}:`, mTypeError.message);
+      // Decide if this failure is critical. For now, log and continue.
+      // The main prediction from Python might still be valid.
+      // You could add this error information to the final response if needed.
+    }
 
     const actualPredictionData = pythonOutput.result;
     const expiresAt = Date.now() + TTL_MS;
@@ -136,6 +244,9 @@ export async function POST(request: NextRequest) {
       requestedInput: inputIdentifierForResults,
       params: { alpha, clusters },
       prediction: actualPredictionData, // This contains paths relative to PYTHON_TARGET_TMP_BASE
+      mTypeDataGeneration: mTypeGenerationStats ? 
+        { status: 'success', path: `toden_e_py_outputs/${resultId}/data_${resultId}.csv`, ...mTypeGenerationStats } :
+        { status: 'failed_or_skipped', path: null },
       generatedAt: new Date().toISOString(),
       expiresAtIso: new Date(expiresAt).toISOString(),
     };

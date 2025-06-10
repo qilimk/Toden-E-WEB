@@ -1,49 +1,66 @@
+// app/api/get-toden-e-visualization/route.ts
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
-    // Expect a JSON body with { fileName: string }
-    const { fileName } = await request.json();
-    if (!fileName) {
-      return NextResponse.json({ error: 'No fileName provided' }, { status: 400 });
+    const { searchParams } = new URL(request.url);
+    const file = searchParams.get('file'); // This will be the base name (e.g., Leukemia_2_0.5 or a resultId)
+    const id_type = searchParams.get('id_type'); // 'custom' or implies 'standard'
+
+    if (!file) {
+      return NextResponse.json(
+        { error: "Missing 'file' parameter" },
+        { status: 400 }
+      );
     }
 
-    // Build the file path (e.g., go_metadata/data/Leukemia_2_0.5.csv)
-    const filePath = path.join(process.cwd(), 'go_metadata', 'data', `${fileName}.csv`);
+    let filePath;
+    if (id_type === 'custom') {
+      // For custom IDs, 'file' is the resultId.
+      // Custom file path structure: tmp/toden_e_py_outputs/clusters_{resultId}.csv
+      filePath = path.join(
+        process.cwd(),
+        'tmp',
+        'toden_e_py_outputs',
+        `${file}`,
+        `clusters_${file}.csv`
+      );
+      console.log(`Custom file path (toden-e-visualization): ${filePath}`);
+    } else {
+      // Standard pre-generated files
+      // Original path: go_metadata/data/{fileName}.csv
+      filePath = path.join(process.cwd(), 'go_metadata', 'data', `${file}.csv`);
+      console.log(`Standard file path (toden-e-visualization): ${filePath}`);
+    }
+
     const fileContent = await fs.readFile(filePath, 'utf8');
 
-    // Split file content into lines and filter out empty ones
     const lines = fileContent.split('\n').filter(line => line.trim() !== '');
     if (lines.length < 2) {
-      return NextResponse.json({ error: 'File does not contain enough data.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'File does not contain enough data for Toden-E visualization.' },
+        { status: 400 }
+      );
     }
 
-    // Function to split CSV line by commas not within quotes.
     const splitCSV = (line: string) =>
       line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
 
-    // The first line is assumed to be a header, e.g., "ID,0,1"
     const headers = splitCSV(lines[0]).map(h => h.trim());
-    // All columns except the first represent clusters
     const numClusters = headers.length - 1;
 
-    // Process the data row (assume only one row for cluster info)
     const dataRow = splitCSV(lines[1]);
     const algorithm = dataRow[0].trim();
 
-    // Parse each cluster column
     const clusters: string[][] = [];
     for (let i = 1; i < dataRow.length; i++) {
-      // Remove surrounding quotes if they exist
       const cleaned = dataRow[i].trim().replace(/^"|"$/g, '');
-      // Split by commas and remove extra whitespace
       const clusterNodes = cleaned.split(',').map(node => node.trim()).filter(Boolean);
       clusters.push(clusterNodes);
     }
 
-    // Build the union of all nodes from all clusters and sort them.
     const allNodesSet = new Set<string>();
     clusters.forEach(cluster => {
       cluster.forEach(node => allNodesSet.add(node));
@@ -54,10 +71,20 @@ export async function POST(request: Request) {
       algorithm,
       clusters,
       sortedNodes,
-      numClusters
+      numClusters,
     });
-  } catch (error) {
-    console.error("Error in get-toden-e-visualization API:", error);
-    return NextResponse.json({ error: 'Error processing file' }, { status: 500 });
+
+  } catch (error: any) {
+    console.error('Error in get-toden-e-visualization API:', error.message, error.code);
+    if (error.code === 'ENOENT') {
+      return NextResponse.json(
+        { error: 'Toden-E visualization data file not found.' },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json(
+      { error: 'Error processing Toden-E visualization data file' },
+      { status: 500 }
+    );
   }
 }

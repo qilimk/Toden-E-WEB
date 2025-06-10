@@ -29,7 +29,6 @@ interface AppSidebarProps {
   setSelectedFunction: (fn: string) => void;
   setSelectedFile: (file: string) => void;
   selectedFile: string;
-  handleFileSelect: (file: string) => void;
   selectedNode: string;
   setView: (view: string) => void;
   view: string;
@@ -48,6 +47,7 @@ interface AppSidebarProps {
   setEdges: (edges: Edge[]) => void;
   tempID: string | null;
   setTempID: (id: string) => void;
+  setClustersData: (clustersData: { clusters: string[] } | null) => void;
 }
 
 export default function AppSidebar({ 
@@ -57,7 +57,6 @@ export default function AppSidebar({
     setSelectedFunction, 
     setSelectedFile, 
     selectedFile, 
-    handleFileSelect,
     selectedNode,
     setView,
     view,
@@ -75,7 +74,8 @@ export default function AppSidebar({
     edges,
     setEdges,
     tempID,
-    setTempID
+    setTempID,
+    setClustersData
   }: AppSidebarProps) {
 
   const IDForm = useForm({
@@ -86,30 +86,74 @@ export default function AppSidebar({
     });
 
   // If selectedNode or selectedFile change, update edges.
-  useEffect(() => {
-    if (selectedFunction === "toden-e") return;
+  // Client-side function (if 'file' is always a preset filename)
+  async function handleFileSelect(currentFileSelection: string) {
+    // currentFileSelection will be the value of your 'selectedFile' state,
+    // which could be "custom" or a preset filename like "Leukemia_2_0.5".
 
-    setSelectedEdge(null);
-    if (selectedNode && selectedFile) {
-      fetch("/api/get-edge-information", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedNode, selectedFile }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          const fetchedEdges = data.edges?.map((edge: any) => ({
-            ...edge,
-            similarity: Number(edge.similarity),
-          }));
-          setEdges(fetchedEdges || []);
-        })
-        .catch((err) => {
-          console.error("Error fetching edge data: ", err);
-          setEdges([]);
-        });
+    let fileIdentifierForApi: string | null;
+    let idTypeForApi: 'standard' | 'custom';
+
+    if (currentFileSelection === "custom") {
+      // If the selection is "custom", we need the actual resultId stored in tempID.
+      // Ensure 'tempID' is accessible in this function's scope (e.g., from component state).
+      if (!tempID) { 
+        console.error('handleFileSelect: Mode is "custom" but tempID (resultId) is not available.');
+        // Optionally clear previous data
+        setSelectedNode(''); 
+        setClustersData(null);
+        return;
+      }
+      fileIdentifierForApi = tempID; // Use the actual resultId
+      idTypeForApi = 'custom';
+    } else if (currentFileSelection) {
+      // If it's not "custom" and it's a non-empty string, it's a preset filename.
+      fileIdentifierForApi = currentFileSelection;
+      idTypeForApi = 'standard';
+    } else {
+      console.error('handleFileSelect: No file selection provided.');
+      setSelectedNode(''); 
+      setClustersData(null);
+      return;
     }
-  }, [selectedNode, selectedFile]);
+
+    const formData = new FormData();
+    formData.append('file', fileIdentifierForApi);
+    formData.append('id_type', idTypeForApi);
+
+    try {
+      const response = await fetch('/api/set-clusters', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to parse error response from create-m-type-data" }));
+        console.error(`Error fetching allowed nodes: ${response.status}`, errorData.error || response.statusText);
+        setSelectedNode(''); 
+        setClustersData(null); 
+        return;
+      }
+
+      const result = await response.json();
+      if (result.error) {
+          console.error('API error from /api/create-m-type-data:', result.error);
+          setSelectedNode('');
+          setClustersData(null);
+          return;
+      }
+
+      setSelectedNode(result.selectedNode);
+      // Assuming 'result.allowedNodes' is the flat array of unique node strings
+      // and 'setClustersData' expects an object like { clusters: string[] }
+      setClustersData({ clusters: result.allowedNodes });
+
+    } catch (error) {
+      console.error('Network or other error in handleFileSelect calling /api/create-m-type-data:', error);
+      setSelectedNode('');
+      setClustersData(null);
+    }
+  }
 
   useEffect(() => {
     setSelectedEdge(null);

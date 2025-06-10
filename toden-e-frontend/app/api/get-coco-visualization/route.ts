@@ -4,7 +4,6 @@ import path from 'path';
 
 export async function POST(request: Request) {
   try {
-    // Expect parameters: node, allowedNodes, and fileName (e.g., "Leukemia")
     const { node, allowedNodes, fileName } = await request.json();
     if (!node) {
       return NextResponse.json({ error: 'No node provided' }, { status: 400 });
@@ -22,10 +21,8 @@ export async function POST(request: Request) {
     try {
       await fs.access(cacheFilePath);
       cacheExists = true;
-      // Read and parse cache file (CSV)
       const cacheContent = await fs.readFile(cacheFilePath, 'utf8');
       const lines = cacheContent.split('\n').filter(line => line.trim() !== '');
-      // First line is header
       const header = lines[0].split(',');
       cachedRows = lines.slice(1).map(line => {
         const cols = line.split(',');
@@ -39,19 +36,17 @@ export async function POST(request: Request) {
       cacheExists = false;
     }
 
-    // Filter the cached rows for the selected node
     let results = cachedRows.filter(item => item['GS_A_ID'] === node && allowedNodes.includes(item['GS_B_ID']));
 
-    // If no cached rows found for this node, then read from the original file.
     if (results.length === 0) {
       const filePath = path.join(process.cwd(), 'go_metadata', 'm_type_biological_process.txt');
       const fileContent = await fs.readFile(filePath, 'utf8');
       const lines = fileContent.split('\n').filter(line => line.trim() !== '');
       const newResults = [];
-      // Skip header (index 0)
+      
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split('\t');
-        // Check if row's GS_A_ID equals the selected node and GS_B_ID is allowed.
+        
         if (cols[0] === node && allowedNodes.includes(cols[1])) {
           newResults.push({
             GS_A_ID: cols[0],

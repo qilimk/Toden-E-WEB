@@ -53,29 +53,6 @@ export default function HomePage() {
 
   const [tempID, setTempID] = useState<string | null>(null);
 
-  const [isLoadingCustomResult, setIsLoadingCustomResult] = useState(false);
-  const [customResultIdInput, setCustomResultIdInput] = useState('');
-  const [showCustomResultDialog, setShowCustomResultDialog] = useState(false);
-
-  async function handleFileSelect(file: string) {
-    const formData = new FormData();
-    setSelectedFile(file);
-
-    formData.append('file', file);
-
-    try {
-      const response = await fetch('/api/create-m-type-data', {
-        method: 'POST',
-        body: formData,
-      });
-      const result = await response.json();
-      setSelectedNode(result.selectedNode);
-      setClustersData({ clusters: result.allowedNodes });
-    } catch (error) {
-      console.error('Error submitting visualize form:', error);
-    }
-  };
-
   const nodesArray = useMemo(() => {
     if (!clustersData) return [];
     if (!clustersData?.clusters) return [];
@@ -136,7 +113,6 @@ export default function HomePage() {
                   setSelectedFunction={setSelectedFunction}
                   setSelectedFile={setSelectedFile}
                   selectedFile={selectedFile}
-                  handleFileSelect={handleFileSelect}
                   selectedNode={selectedNode}
                   setView={setView}
                   view={view}
@@ -155,6 +131,7 @@ export default function HomePage() {
                   setEdges={setEdges}
                   tempID={tempID}
                   setTempID={setTempID}
+                  setClustersData={setClustersData}
                 />
             }
             <div className="flex flex-1 flex-col">
@@ -181,6 +158,7 @@ export default function HomePage() {
                 hoveredCluster={hoveredCluster}
                 edges={edges}
                 setEdges={setEdges}
+                tempID={tempID}
               />
               {drawerOpen &&
                 <SummaryDrawer 
@@ -199,7 +177,6 @@ export default function HomePage() {
                               setSelectedFunction={setSelectedFunction}
                               setSelectedFile={setSelectedFile}
                               selectedFile={selectedFile}
-                              handleFileSelect={handleFileSelect}
                               selectedNode={selectedNode}
                               setView={setView}
                               view={view}
@@ -218,6 +195,7 @@ export default function HomePage() {
                               setEdges={setEdges}
                               tempID={tempID}
                               setTempID={setTempID}
+                              setClustersData={setClustersData}
                             />
             }
             <MatrixVisualization 
