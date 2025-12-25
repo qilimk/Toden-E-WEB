@@ -13,9 +13,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning={true}>
-      <NextThemesProvider attribute="class" defaultTheme="dark">
-        <body className={inter.className}>{children}</body>
-      </NextThemesProvider>
+      <body className={inter.className}>
+        <NextThemesProvider attribute="class" defaultTheme="dark">
+          {children}
+        </NextThemesProvider>
+      </body>
     </html>
   );
 }

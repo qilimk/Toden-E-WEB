@@ -37,11 +37,16 @@ const VisualizeFormSchema = z
   .object({
     file: z.string().optional(),
     fileUpload: z.any().optional(),
+    customResultId: z.string().optional(),
   })
   // Ensure at least one file input (select or upload) is provided.
   .refine(
-    (data) => data.file || (data.fileUpload && data.fileUpload.length > 0),
+    (data) => data.file || data.customResultId || (data.fileUpload && data.fileUpload.length > 0),
     { message: "Please select a file or upload one.", path: ["fileUpload"] }
+  )
+  .refine(
+    (data) => data.file !== 'custom' || !!data.customResultId,
+    { message: "Enter a result ID or run Predict to generate one.", path: ["customResultId"] }
 );
 
 // Form Schema for Summarization Functionality
@@ -49,11 +54,26 @@ const SummarizeFormSchema = z
   .object({
     file: z.string().optional(),
     fileUpload: z.any().optional(),
+    customResultId: z.string().optional(),
   })
   .refine(
-    (data) => data.file || (data.fileUpload && data.fileUpload.length > 0),
+    (data) => data.file || data.customResultId || (data.fileUpload && data.fileUpload.length > 0),
     { message: "Please select a file or upload one.", path: ["fileUpload"] }
+  )
+  .refine(
+    (data) => data.file !== 'custom' || !!data.customResultId,
+    { message: "Enter a result ID or run Predict to generate one.", path: ["customResultId"] }
 );
+
+interface ClusterSummary {
+  cluster_id: number;
+  cluster_label?: string;
+  algorithm?: string;
+  size: number;
+  key_terms: string[];
+  summary: string;
+  top_terms: { goid: string; name: string }[];
+}
 
 interface TabsContentProps {
   setClustersData: (data: any) => void;
@@ -61,16 +81,19 @@ interface TabsContentProps {
   setSelectedFile: (data: any) => void;
   handleSubmitComplete: () => void;
   setTempID: (id: string) => void;
+  tempID?: string | null;
 }
 
 // Function Tabs Component
-export default function FunctionTabs({ setClustersData, setSelectedNode, setSelectedFile, handleSubmitComplete, setTempID }: TabsContentProps) {
+export default function FunctionTabs({ setClustersData, setSelectedNode, setSelectedFile, handleSubmitComplete, setTempID, tempID }: TabsContentProps) {
   const [predictFileKey, setPredictFileKey] = useState(0);
   const [visualizeFileKey, setVisualizeFileKey] = useState(0);
   const [summarizeFileKey, setSummarizeFileKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [alertOpen, setAlertOpen] = useState(false);
+  const [summaries, setSummaries] = useState<ClusterSummary[]>([]);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   // Provides Progress Bar Functionality
   useEffect(() => {
@@ -110,6 +133,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     defaultValues: {
       file: "",
       fileUpload: undefined,
+      customResultId: "",
     },
   });
 
@@ -119,8 +143,20 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     defaultValues: {
       file: "",
       fileUpload: undefined,
+      customResultId: "",
     },
   });
+
+  const visualizeFileSelection = VisualizeForm.watch("file");
+  const summarizeFileSelection = SummarizeForm.watch("file");
+
+  // Keep custom id fields in sync with the most recent tempID (from Predict)
+  useEffect(() => {
+    if (tempID) {
+      VisualizeForm.setValue("customResultId", tempID);
+      SummarizeForm.setValue("customResultId", tempID);
+    }
+  }, [tempID, VisualizeForm, SummarizeForm]);
   
   async function PredictSubmit(data: z.infer<typeof PredictFormSchema>) {
     console.log("Before normalization:", JSON.stringify(data)); // Log the whole data object
@@ -186,18 +222,44 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
     setIsLoading(true);
     setProgress(0);
     const formData = new FormData();
-    setSelectedFile(data.file);
-    
-    formData.append('file', data.file || '');
-    
+
+    let idType: 'standard' | 'custom' = 'standard';
+    const requestedFile = data.file || '';
+    const resolvedId = (data.customResultId || tempID || '').trim();
+    let fileIdentifier = requestedFile;
+
+    // Support loading the latest custom prediction by result ID, even if the select is blank.
+    if (requestedFile === 'custom' || (!requestedFile && resolvedId)) {
+      if (!resolvedId) {
+        setAlertOpen(true);
+        setIsLoading(false);
+        return;
+      }
+      idType = 'custom';
+      fileIdentifier = resolvedId;
+      setTempID(resolvedId);
+      setSelectedFile('custom');
+    } else {
+      setSelectedFile(fileIdentifier);
+    }
+
+    if (!fileIdentifier) {
+      setAlertOpen(true);
+      setIsLoading(false);
+      return;
+    }
+
+    formData.append('file', fileIdentifier);
+    formData.append('id_type', idType);
+
     if (data.fileUpload && data.fileUpload.length > 0) {
       formData.append('fileUpload', data.fileUpload[0]);
     }
   
-    VisualizeForm.reset();
+    VisualizeForm.reset({ file: "", fileUpload: undefined, customResultId: tempID || "" });
     
     try {
-      const response = await fetch('/api/create-m-type-data', {
+      const response = await fetch('/api/set-clusters', {
         method: 'POST',
         body: formData,
       });
@@ -221,23 +283,52 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
 
   // Function when Summarization is Submitted
   async function SummarizeSubmit(data: z.infer<typeof SummarizeFormSchema>) {
-    console.log(data);
+    setSummaries([]);
+    setSummaryError(null);
     setIsLoading(true);
     setProgress(0);
     const formData = new FormData();
-  
-    // Append file selection (if any)
-    formData.append('file', data.file || '');
-    
-    // Append file upload (if provided)
+
+    let idType: 'standard' | 'custom' = 'standard';
+    const requestedFile = data.file || '';
+    const resolvedId = (data.customResultId || tempID || '').trim();
+    let fileIdentifier = requestedFile;
+
+    if (requestedFile === 'custom' || (!requestedFile && resolvedId)) {
+      if (!resolvedId) {
+        setAlertOpen(true);
+        setIsLoading(false);
+        return;
+      }
+      idType = 'custom';
+      fileIdentifier = resolvedId;
+      setTempID(resolvedId);
+      setSelectedFile('custom');
+    } else if (requestedFile) {
+      setSelectedFile(fileIdentifier);
+    }
+
+    if (!fileIdentifier && !(data.fileUpload && data.fileUpload.length > 0)) {
+      setAlertOpen(true);
+      setIsLoading(false);
+      return;
+    }
+
+    if (fileIdentifier) {
+      formData.append('file', fileIdentifier);
+    }
+    formData.append('id_type', idType);
+    if (data.customResultId) {
+      formData.append('customResultId', data.customResultId);
+    }
     if (data.fileUpload && data.fileUpload.length > 0) {
       formData.append('fileUpload', data.fileUpload[0]);
     }
 
-    SummarizeForm.reset();
-    
+    SummarizeForm.reset({ file: "", fileUpload: undefined, customResultId: tempID || "" });
+  
     try {
-      const response = await fetch('http://localhost:5000/summarize', {
+      const response = await fetch('/api/summarize', {
         method: 'POST',
         body: formData,
       });
@@ -247,15 +338,21 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
       }
 
       const result = await response.json();
-      console.log('Summarize result:', result);
-      // Handle result as needed (e.g., update state, show notifications, etc.)
+      if (result.error) {
+        setSummaryError(result.error);
+      } else {
+        setSummaries(result.summaries || []);
+        if (result.all_nodes && result.all_nodes.length > 0) {
+          setClustersData({ clusters: result.all_nodes });
+          setSelectedNode(result.all_nodes[0]);
+        }
+      }
     } catch (error) {
       console.error('Error submitting summarize form:', error);
       setAlertOpen(true);
     } finally {
       setIsLoading(false);
       setSummarizeFileKey(prev => prev + 1);
-      handleSubmitComplete();
     }
   }
 
@@ -273,8 +370,8 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
       <Tabs defaultValue="predict">
         <TabsList className="grid w-full grid-cols-3 space-x-2">
           <TabsTrigger value="predict">Predict</TabsTrigger>
-          <TabsTrigger value="visualize" disabled>Visualize (Not Available)</TabsTrigger>
-          <TabsTrigger value="summarize" disabled>Summarize (Not Available)</TabsTrigger>
+          <TabsTrigger value="visualize">Visualize</TabsTrigger>
+          <TabsTrigger value="summarize">Summarize</TabsTrigger>
           {/* <TabsTrigger value="partition-score">Partition Score</TabsTrigger> */}
         </TabsList>
         <TabsContent value="predict">
@@ -545,28 +642,55 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                               <SelectTrigger>
                                 <SelectValue placeholder="Select a file..." />
                               </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  <SelectLabel>File</SelectLabel>
-                                  <SelectItem value="Leukemia_2_0.25">Leukemia (2 Clusters), (0.25 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_2_0.5">Leukemia (2 Clusters), (0.5 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_3_0.25">Leukemia (3 Clusters), (0.25 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_3_0.5">Leukemia (3 Clusters), (0.5 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_4_0.25">Leukemia (4 Clusters), (0.25 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_4_0.5">Leukemia (4 Clusters), (0.5 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_5_0.25">Leukemia (5 Clusters), (0.25 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_5_0.5">Leukemia (5 Clusters), (0.5 Alpha)</SelectItem>
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectLabel>File</SelectLabel>
+                              <SelectItem value="Leukemia_2_0.25">Leukemia (2 Clusters), (0.25 Alpha)</SelectItem>
+                              <SelectItem value="Leukemia_2_0.5">Leukemia (2 Clusters), (0.5 Alpha)</SelectItem>
+                              <SelectItem value="Leukemia_3_0.25">Leukemia (3 Clusters), (0.25 Alpha)</SelectItem>
+                              <SelectItem value="Leukemia_3_0.5">Leukemia (3 Clusters), (0.5 Alpha)</SelectItem>
+                              <SelectItem value="Leukemia_4_0.25">Leukemia (4 Clusters), (0.25 Alpha)</SelectItem>
+                              <SelectItem value="Leukemia_4_0.5">Leukemia (4 Clusters), (0.5 Alpha)</SelectItem>
+                              <SelectItem value="Leukemia_5_0.25">Leukemia (5 Clusters), (0.25 Alpha)</SelectItem>
+                              <SelectItem value="Leukemia_5_0.5">Leukemia (5 Clusters), (0.5 Alpha)</SelectItem>
+                              <SelectItem value="custom">Custom result ID</SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </div>
+                {/* Custom result identifier (for new prediction runs) */}
+                {visualizeFileSelection === "custom" && (
+                  <>
+                    <FormLabel className="col-span-1 text-right">
+                      Result ID
+                    </FormLabel>
+                    <div className="col-span-3">
+                      <FormField
+                        control={VisualizeForm.control}
+                        name="customResultId"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Input
+                              placeholder="Paste result ID from Predict"
+                              {...field}
+                            />
                           </FormControl>
                         )}
                       />
                     </div>
-                    {/* "or" text */}
-                    <div className="col-span-1 text-center">
-                      <span>or</span>
+                    <div className="col-span-1" />
+                    <div className="col-span-3 text-sm text-muted-foreground">
+                      Uses the most recent ID by default if Predict was just run.
                     </div>
+                  </>
+                )}
+                {/* "or" text */}
+                <div className="col-span-1 text-center">
+                  <span>or</span>
+                </div>
                     {/* File upload input */}
                     <div className="col-span-3">
                       <FormField
@@ -590,7 +714,7 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                   <Button 
                     variant="destructive" 
                     onClick={() => {
-                      VisualizeForm.reset();
+                      VisualizeForm.reset({ file: "", fileUpload: undefined, customResultId: tempID || "" });
                       setVisualizeFileKey(prev => prev + 1);
                     }}
                   >
@@ -689,22 +813,48 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                                   <SelectItem value="Leukemia_2_0.25">Leukemia (2 Clusters), (0.25 Alpha)</SelectItem>
                                   <SelectItem value="Leukemia_2_0.5">Leukemia (2 Clusters), (0.5 Alpha)</SelectItem>
                                   <SelectItem value="Leukemia_3_0.25">Leukemia (3 Clusters), (0.25 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_3_0.5">Leukemia (3 Clusters), (0.5 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_4_0.25">Leukemia (4 Clusters), (0.25 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_4_0.5">Leukemia (4 Clusters), (0.5 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_5_0.25">Leukemia (5 Clusters), (0.25 Alpha)</SelectItem>
-                                  <SelectItem value="Leukemia_5_0.5">Leukemia (5 Clusters), (0.5 Alpha)</SelectItem>
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
+                              <SelectItem value="Leukemia_3_0.5">Leukemia (3 Clusters), (0.5 Alpha)</SelectItem>
+                              <SelectItem value="Leukemia_4_0.25">Leukemia (4 Clusters), (0.25 Alpha)</SelectItem>
+                              <SelectItem value="Leukemia_4_0.5">Leukemia (4 Clusters), (0.5 Alpha)</SelectItem>
+                              <SelectItem value="Leukemia_5_0.25">Leukemia (5 Clusters), (0.25 Alpha)</SelectItem>
+                              <SelectItem value="Leukemia_5_0.5">Leukemia (5 Clusters), (0.5 Alpha)</SelectItem>
+                              <SelectItem value="custom">Custom result ID</SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </div>
+                {summarizeFileSelection === "custom" && (
+                  <>
+                    <FormLabel className="col-span-1 text-right">
+                      Result ID
+                    </FormLabel>
+                    <div className="col-span-3">
+                      <FormField
+                        control={SummarizeForm.control}
+                        name="customResultId"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Input
+                              placeholder="Paste result ID from Predict"
+                              {...field}
+                            />
                           </FormControl>
                         )}
                       />
                     </div>
-                    {/* "or" text */}
-                    <div className="col-span-1 text-center">
-                      <span>or</span>
+                    <div className="col-span-1" />
+                    <div className="col-span-3 text-sm text-muted-foreground">
+                      Uses the most recent ID by default if Predict was just run.
                     </div>
+                  </>
+                )}
+                {/* "or" text */}
+                <div className="col-span-1 text-center">
+                  <span>or</span>
+                </div>
                     {/* File upload input */}
                     <div className="col-span-3">
                       <FormField
@@ -728,30 +878,77 @@ export default function FunctionTabs({ setClustersData, setSelectedNode, setSele
                   <Button 
                     variant="destructive" 
                     onClick={() => {
-                      SummarizeForm.reset();
+                      SummarizeForm.reset({ file: "", fileUpload: undefined, customResultId: tempID || "" });
                       setSummarizeFileKey(prev => prev + 1);
                     }}
                   >
                     Reset
                   </Button>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span style={{ display: 'inline-block', cursor: 'not-allowed' }}>
-                          <Button type="submit" disabled={true}>
-                            Submit
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                      <p>Sorry, this feature is currently disabled.</p>
-                    </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <Button type="submit" disabled={!SummarizeForm.formState.isValid}>
+                    Submit
+                  </Button>
                 </CardFooter>
               </form>
             </Form>
           </Card>
+          {summaryError && (
+            <p className="text-sm text-red-600 mt-2">{summaryError}</p>
+          )}
+          {summaries.length > 0 && (
+            <Card className="w-[1000px] mt-4">
+              <CardHeader>
+                <CardTitle>Cluster summaries</CardTitle>
+                <CardDescription>Quick bioscience-focused highlights for each cluster.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {summaries.map((summary) => (
+                  <div key={summary.cluster_id} className="rounded-md border p-3 space-y-2">
+                    <div className="flex items-center justify-between text-sm font-semibold">
+                      <span>
+                        Cluster {summary.cluster_id + 1}
+                        {summary.cluster_label ? ` (${summary.cluster_label})` : ""}
+                        {summary.algorithm ? ` · ${summary.algorithm}` : ""}
+                      </span>
+                      <span className="text-muted-foreground">{summary.size} GO terms</span>
+                    </div>
+                    {summary.key_terms?.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {summary.key_terms.map((term) => (
+                          <span
+                            key={term}
+                            className="inline-flex items-center rounded-full bg-muted px-2 py-1 text-xs font-medium"
+                          >
+                            {term}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {summary.summary}
+                    </p>
+                    {summary.top_terms?.length > 0 && (
+                      <div className="text-sm space-y-1">
+                        <p className="font-semibold">Representative terms</p>
+                        <div className="flex flex-wrap gap-2">
+                          {summary.top_terms.map((term) => (
+                            <a
+                              key={term.goid}
+                              href={`http://amigo.geneontology.org/amigo/term/${term.goid}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline text-primary"
+                            >
+                              {term.name}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
     </Tabs>
      )}

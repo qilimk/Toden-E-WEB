@@ -1,0 +1,68 @@
+
+
+1/2
+
+Next.js 15.3.2 (outdated)
+Turbopack
+Console Error
+
+Each child in a list should have a unique "key" prop.
+
+Check the render method of `AppSidebar`. See https://react.dev/link/warning-keys for more information.
+
+components/AppSidebar.tsx (396:23) @ <unknown>
+
+
+  394 |                   <div className="space-y-4">
+  395 |                     {todenEClusters.clusters.map((cluster, clusterIndex) => (
+> 396 |                       <ScrollArea className="h-64">
+      |                       ^
+  397 |                       <Table key={clusterIndex} className="w-full">
+  398 |                         <TableHeader>
+  399 |                           <TableRow>
+Call Stack
+24
+
+Show 20 ignore-listed frame(s)
+<unknown>
+components/AppSidebar.tsx (396:23)
+Array.map
+<anonymous> (0:0)
+AppSidebar
+components/AppSidebar.tsx (395:46)
+HomePage
+app/home/page.tsx (109:17)
+1
+2
+Was this helpful?
+
+
+
+2/2
+
+Next.js 15.3.2 (outdated)
+Turbopack
+Console Error
+
+
+Error: Not enough data points (6) to create nNeighbors: 15.  Add more data points or adjust the configuration.
+
+components/DynamicGraph.tsx (275:35) @ fetchConMatrixAndComputeUMAP
+
+
+  273 |       }
+  274 |       
+> 275 |       const coords = umapInstance.fit(conMatrix);
+      |                                   ^
+  276 |       console.log("Computed UMAP coordinates:", coords);
+  277 |       setUmapCoords(coords);
+  278 |
+Call Stack
+3
+
+Show 2 ignore-listed frame(s)
+fetchConMatrixAndComputeUMAP
+components/DynamicGraph.tsx (275:35)
+1
+2
+Was this helpful?

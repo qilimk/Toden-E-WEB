@@ -101,6 +101,7 @@ export default function HomePage() {
               setSelectedFile={setSelectedFile}
               handleSubmitComplete={handleSubmitComplete}
               setTempID={setTempID}
+              tempID={tempID}
             />
           </div>
         ) : view == "graph" ? (
